@@ -1,15 +1,17 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import random
+
 import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import numpy as np
 import yaml
 from utils import read_csv
 
-map_id = 1
+map_id = random.randint(1, 250)
 
 map_name = "/Users/meraj/workspace/f1tenth_gym/work/tracks"
 map_png = map_name + "/maps/map{}.png".format(map_id)
-map_csv = map_name + "/maps/map{}.csv".format(map_id)
-map_yaml = map_name + "/centerline/map{}.yaml".format(map_id)
+map_csv = map_name + "/centerline/map{}.csv".format(map_id)
+map_yaml = map_name + "/maps/map{}.yaml".format(map_id)
 
 image = mpimg.imread(map_png)
 map_data = np.array(read_csv(map_csv))

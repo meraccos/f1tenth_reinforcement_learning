@@ -1,11 +1,13 @@
-from utils import create_env
 import threading
-import keyboard
 import time
+
+import keyboard
 import numpy as np
+from utils import create_env
 
 # instantiating the environment
-maps = list(range(1,5))
+maps = list(range(1,200))
+maps = [5]
 env = create_env(maps=maps)
 
 obs = env.reset()

@@ -20,16 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import os
+import random
+import time
+
+import cv2
+import numpy as np
+import yaml
+from f110_gym.envs.base_classes import Integrator, Simulator
+
 import gym
 from gym import spaces
-import numpy as np
-import time
-import random
-import cv2
-import os
-import yaml
-
-from f110_gym.envs.base_classes import Simulator, Integrator
 
 # Constants
 VIDEO_W = 600
@@ -338,30 +339,38 @@ class F110Env(gym.Env):
         poses_y = np.array(self.poses_y)-self.start_ys
         delta_pt = np.dot(self.start_rot, np.stack((poses_x, poses_y), axis=0))
         temp_y = delta_pt[1,:]
-        idx1 = temp_y > left_t
-        idx2 = temp_y < -right_t
-        temp_y[idx1] -= left_t
-        temp_y[idx2] = -right_t - temp_y[idx2]
-        temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
+        # idx1 = temp_y > left_t
+        # idx2 = temp_y < -right_t
+        # temp_y[idx1] -= left_t
+        # temp_y[idx2] = -right_t - temp_y[idx2]
+        # temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
+        temp_y = np.where(temp_y > left_t, temp_y - left_t, np.where(temp_y < -right_t, -right_t - temp_y, 0))
 
         dist2 = delta_pt[0, :]**2 + temp_y**2
         closes = dist2 <= 0.1
-        for i in range(self.num_agents):
-            if closes[i] and not self.near_starts[i]:
-                self.near_starts[i] = True
-                self.toggle_list[i] += 1
-            elif not closes[i] and self.near_starts[i]:
-                self.near_starts[i] = False
-                self.toggle_list[i] += 1
-            self.lap_counts[i] = self.toggle_list[i] // 2
-            if self.toggle_list[i] < 4:
-                self.lap_times[i] = self.current_time
+        # for i in range(self.num_agents):
+        #     if closes[i] and not self.near_starts[i]:
+        #         self.near_starts[i] = True
+        #         self.toggle_list[i] += 1
+        #     elif not closes[i] and self.near_starts[i]:
+        #         self.near_starts[i] = False
+        #         self.toggle_list[i] += 1
+        #     self.lap_counts[i] = self.toggle_list[i] // 2
+        #     if self.toggle_list[i] < 4:
+        #         self.lap_times[i] = self.current_time
+        self.toggle_list = np.where(np.logical_xor(closes, self.near_starts), self.toggle_list + 1, self.toggle_list)
+        self.near_starts = closes.copy()
+        self.lap_counts = self.toggle_list // 2
+        self.lap_times = np.where(self.toggle_list < 4, self.current_time, self.lap_times)
 
         done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
         
-        self.max_episode_time = 500
+        max_episode_time = 800
         
-        if self.current_time >= self.max_episode_time or self.lap_counts == 3:
+        if self.current_time >= max_episode_time and self.lap_counts==0:
+            done = True
+        
+        if self.lap_counts == 3:
             done = True
 
         return bool(done), self.toggle_list >= 4
@@ -410,6 +419,7 @@ class F110Env(gym.Env):
         obs['scans'] = obs['scans'][0]
         obs = self._format_obs(obs)
         self.curr_obs = obs
+        # self.render()
         return obs, 0, done, info
 
 
@@ -433,6 +443,7 @@ class F110Env(gym.Env):
             init_x = np.random.uniform(-0.3, 0.3)
             init_y = np.random.uniform(-0.3, 0.3)
             init_angle = np.pi/2 + self.map_csv_data[1, 3] + np.random.uniform(-np.pi/12, np.pi/12)
+            # init_angle += np.pi/2
             poses = np.array([[init_x, init_y, init_angle]])
             
         # reset counters and data members

@@ -6,7 +6,7 @@ maps = list(range(1, 200))
 env = create_env(maps=maps)
 env.training = False
 
-model = "models/new_reward_50000.zip"
+model = "/Users/meraj/workspace/f1tenth_gym/work/models/new_reward_9_1050000"
 
 model = PPO.load(path=model, env=env)
 

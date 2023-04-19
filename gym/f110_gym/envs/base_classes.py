@@ -26,11 +26,13 @@ Replacement of the old RaceCar, Simulator classes in C++
 Author: Hongrui Zheng
 """
 from enum import Enum
-import numpy as np
 
-from f110_gym.envs.dynamic_models import vehicle_dynamics_st, pid
+import numpy as np
+from f110_gym.envs.collision_models import collision_multiple, get_vertices
+from f110_gym.envs.dynamic_models import pid, vehicle_dynamics_st
 from f110_gym.envs.laser_models import ScanSimulator2D, check_ttc_jit, ray_cast
-from f110_gym.envs.collision_models import get_vertices, collision_multiple
+
+from collections import deque
 
 
 class Integrator(Enum):
@@ -109,6 +111,8 @@ class RaceCar(object):
 
         # collision threshold for iTTC to environment
         self.ttc_thresh = 0.005
+        
+        self.steer_buffer = deque(maxlen=self.steer_buffer_size)
 
         if RaceCar.scan_simulator is None:
             self._initialize_static_variables()
@@ -187,7 +191,8 @@ class RaceCar(object):
         self.state = np.zeros((7,))
         self.state[0:2] = pose[0:2]
         self.state[4] = pose[2]
-        self.steer_buffer = np.empty((0,))
+        # self.steer_buffer = np.empty((0,))
+        self.steer_buffer = deque(maxlen=self.steer_buffer_size)
         # reset scan random generator
         self.scan_rng = np.random.default_rng(seed=self.seed)
 
@@ -292,14 +297,21 @@ class RaceCar(object):
         # state is [x, y, steer_angle, vel, yaw_angle, yaw_rate, slip_angle]
 
         # steering delay
-        steer = 0.0
-        if self.steer_buffer.shape[0] < self.steer_buffer_size:
+        # steer = 0.0
+        # if self.steer_buffer.shape[0] < self.steer_buffer_size:
+        #     steer = 0.0
+        #     self.steer_buffer = np.append(raw_steer, self.steer_buffer)
+        # else:
+        #     steer = self.steer_buffer[-1]
+        #     self.steer_buffer = self.steer_buffer[:-1]
+        #     self.steer_buffer = np.append(raw_steer, self.steer_buffer)
+            
+        if len(self.steer_buffer) < self.steer_buffer_size:
             steer = 0.0
-            self.steer_buffer = np.append(raw_steer, self.steer_buffer)
+            self.steer_buffer.appendleft(raw_steer)
         else:
-            steer = self.steer_buffer[-1]
-            self.steer_buffer = self.steer_buffer[:-1]
-            self.steer_buffer = np.append(raw_steer, self.steer_buffer)
+            steer = self.steer_buffer.pop()
+            self.steer_buffer.appendleft(raw_steer)
 
         # steering angle velocity input to steering velocity acceleration input
         accl, sv = pid(

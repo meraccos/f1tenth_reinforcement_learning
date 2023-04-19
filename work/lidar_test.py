@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from stable_baselines3 import PPO
 from utils import create_env
 
@@ -8,7 +8,7 @@ maps = list(range(1, 250))
 env = create_env(maps=maps)
 env.training = False
 
-model = "models/new_reward_350000.zip"
+model = "/Users/meraj/workspace/f1tenth_gym/work/models/new_reward_7_700000"
 
 model = PPO.load(path=model, env=env)
 
