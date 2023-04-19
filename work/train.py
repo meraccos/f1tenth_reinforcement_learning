@@ -2,9 +2,9 @@ from stable_baselines3 import PPO
 from utils import TensorboardCallback, create_env
 
 save_interval = 50_000
-save_path = "./models/new_reward_9"
+save_path = "./models/new_reward_11"
 log_dir = "./metrics/"
-log_name = "new_reward_9"
+log_name = "new_reward_11"
 maps = list(range(1, 250))
 
 env = create_env(maps=maps)

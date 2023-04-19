@@ -25,35 +25,30 @@ def create_env(maps=[0]):
     env = FrenetObsWrapper(env)
     env = NewReward(env)
     env = ReducedObs(env)
-    
     env = NormalizeActionWrapper(env)
-    
     env = Monitor(env)
     env = DummyVecEnv([lambda: env])
     return env
+
 
 class NormalizeActionWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.low = env.action_space.low
         self.high = env.action_space.high
-        self.action_space = gym.spaces.Box(low=-1, high=1, shape=env.action_space.shape, dtype=np.float32)
+        self.action_space = gym.spaces.Box(
+            low=-1, high=1, shape=env.action_space.shape, dtype=np.float32
+        )
 
     def denormalize_action(self, normalized_action):
         return self.low + (normalized_action + 1.0) * 0.5 * (self.high - self.low)
 
     def step(self, action):
         denormalized_action = self.denormalize_action(action)
-        # print(self.low)
-        # print(self.high)
-        # print(action)
-        # print(denormalized_action)
-        # print()
-        
         next_state, reward, done, info = self.env.step(denormalized_action)
         return next_state, reward, done, info
-    
-    
+
+
 class FrenetObsWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super(FrenetObsWrapper, self).__init__(env)
@@ -67,9 +62,7 @@ class FrenetObsWrapper(gym.ObservationWrapper):
                 "scans": spaces.Box(0, 100, (NUM_BEAMS,), np.float32),
                 "poses_x": spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
                 "poses_y": spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
-                "poses_theta": spaces.Box(
-                    -2 * np.pi, 2 * np.pi, (self.num_agents,), np.float32
-                ),
+                "poses_theta": spaces.Box(-2 * np.pi, 2 * np.pi, (self.num_agents,), np.float32),
                 "linear_vels_x": spaces.Box(-10, 10, (self.num_agents,), np.float32),
                 "linear_vels_y": spaces.Box(-10, 10, (self.num_agents,), np.float32),
                 "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), np.float32),
@@ -99,8 +92,6 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         obs["poses_d"] = np.array(frenet_coords[1])
         obs["linear_vels_s"] = np.array(frenet_coords[2]).reshape((1, -1))
         obs["linear_vels_d"] = np.array(frenet_coords[3])
-        
-        # print(obs["linear_vels_d"])
 
         return obs
 
@@ -161,20 +152,14 @@ class TensorboardCallback(BaseCallback):
         infos = copy(self.locals.get("infos", [{}])[0])
         checkpoint_done = infos.get("checkpoint_done", False)
 
-        lap_counts = copy(env.lap_counts)
-
-        # Check if half the track is passed
-        half_frac = 5 / 12
-        frac = env.poses_s / self.max_s
-        if frac >= half_frac and frac < (1 - half_frac):
-            self.half_past = True
-
         if checkpoint_done:
             # Calculate the fraction
             self.max_s_frac = copy(self.prev_s / self.max_s)
-
-
-            self.max_s_frac += float(lap_counts)
+            
+            if self.prev_lap_times <=20.0 and self.max_s_frac > 0.5:
+                self.max_s_frac -= 1.0
+            else:
+                self.max_s_frac += float(self.prev_lap_counts)
 
             self.lap_countss[self.episode_index] = infos.get("lap_count", 0)
             self.episode_index = (self.episode_index + 1) % 100
@@ -182,6 +167,7 @@ class TensorboardCallback(BaseCallback):
 
         self.prev_s = copy(env.poses_s)
         self.prev_lap_times = copy(env.lap_times)
+        self.prev_lap_counts = copy(env.lap_counts)
         self.max_s = copy(env.map_max_s)
 
         # Save the model
@@ -210,17 +196,17 @@ def convert_to_frenet(x, y, vel_magnitude, pose_theta, map_data, kdtree):
     closest_point_index = get_closest_point_index(x, y, kdtree)
     closest_point = map_data[closest_point_index]
     s_m, x_m, y_m, psi_rad = closest_point[0:4]
-    
+
     dx = x - x_m
     dy = y - y_m
-    
+
     vx = vel_magnitude * np.cos(pose_theta)
     vy = vel_magnitude * np.sin(pose_theta)
-    
+
     s = -dx * np.sin(psi_rad) + dy * np.cos(psi_rad) + s_m
-    d =  dx * np.cos(psi_rad) + dy * np.sin(psi_rad)
-    
+    d = dx * np.cos(psi_rad) + dy * np.sin(psi_rad)
+
     vs = -vx * np.sin(psi_rad) + vy * np.cos(psi_rad)
-    vd =  vx * np.cos(psi_rad) + vy * np.sin(psi_rad)
-        
+    vd = vx * np.cos(psi_rad) + vy * np.sin(psi_rad)
+
     return s, d, vs, vd
