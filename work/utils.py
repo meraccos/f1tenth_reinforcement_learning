@@ -60,8 +60,6 @@ class FrenetObsWrapper(gym.ObservationWrapper):
 
         self.poses_s = np.array(frenet_coords[0]).reshape((1, -1))
         
-        print(self.poses_s)
-
         obs['poses_s'] = np.array(frenet_coords[0]).reshape((1, -1))
         obs['poses_d'] = np.array(frenet_coords[1])
         obs['linear_vels_s'] = np.array(frenet_coords[2]).reshape((1, -1))
@@ -140,6 +138,11 @@ class TensorboardCallback(BaseCallback):
         self.max_s = 100.0
         
         self.half_past = False
+        
+        
+        self.lap_counts = np.zeros(100, int)
+        self.episode_index = 0
+        self.success_rate = 0.0
 
     def _on_step(self) -> bool:
         
@@ -156,31 +159,28 @@ class TensorboardCallback(BaseCallback):
         half_frac = 5/12
         if env.poses_s >= self.max_s * half_frac and env.poses_s <= self.max_s * (1 - half_frac):
             self.half_past = True
-        
-        
 
         if checkpoint_done:
             # Calculate the fraction
-            print('the env pose_s ', env.poses_s)
             self.max_s_frac = copy(self.prev_s / self.max_s)
             
-
             # Check for false lap (crossing the finish line backwards)
             if not self.half_past and self.max_s_frac >= 0.5:
                 print('false lap')
                 self.max_s_frac -= 1.0
-                
             
             # Account for the subsequent laps
             if self.half_past and lap_counts == 1:
                 self.max_s_frac += float(lap_counts)
                 
-            
-            if self.max_s_frac >= 0.3:
-                print(self.prev_lap_times)
-                print(self.half_past)
                 
-            print('\n\n\n\n\n FRAC CHANGED: ', self.prev_s, self.max_s, self.max_s_frac)
+            
+            self.lap_counts[self.episode_index] = infos.get("lap_count", 0)
+            self.episode_index = (self.episode_index + 1) % 100
+            self.success_rate = np.mean(self.lap_counts > 1)
+                
+                
+            # print('\n\n\n\n\n FRAC CHANGED: ', self.prev_s, self.max_s, self.max_s_frac)
             
         
             
@@ -194,9 +194,9 @@ class TensorboardCallback(BaseCallback):
 
         # Log the track fraction
         self.logger.record("rollout/track_fraction", float(self.max_s_frac))
+        self.logger.record("rollout/success_rate", float(self.success_rate))
         
         return True
-    
     
     
         

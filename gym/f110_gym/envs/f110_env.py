@@ -285,9 +285,7 @@ class F110Env(gym.Env):
         self.map_origin = yaml_data['origin'][0:2]
         self.map_resolution = yaml_data['resolution']
         self.map_max_s = self.map_csv_data[:,0][-1]
-        
-        print(self.map_max_s)
-        
+                
         self.add_obstacles()
         
         self.map_yaml= f"{self.map_dir}/maps/{self.map_name}.yaml"
@@ -412,7 +410,6 @@ class F110Env(gym.Env):
         obs['scans'] = obs['scans'][0]
         obs = self._format_obs(obs)
         self.curr_obs = obs
-        self.render()
         return obs, 0, done, info
 
 
