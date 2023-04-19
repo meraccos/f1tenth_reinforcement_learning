@@ -28,8 +28,8 @@ while not done:
 
     # Convert LiDAR data to polar coordinates
     num_angles = lidar_data.size
-    full_lidar_angle = 270  # degrees
-    angles = np.linspace(np.radians(full_lidar_angle / 2), -np.radians(full_lidar_angle / 2), num_angles)
+    full_lidar_angle = np.pi * 270 / 180  # degrees
+    angles = np.linspace(full_lidar_angle / 2, -full_lidar_angle / 2, num_angles)
 
     # Update the LiDAR data plot
     ax.clear()

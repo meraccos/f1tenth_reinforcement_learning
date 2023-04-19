@@ -134,7 +134,9 @@ class F110Env(gym.Env):
         self.start_rot = np.eye(2)
 
         # initiate stuff
-        self.sim = Simulator(self.params, self.num_agents, seed=self.seed, num_beams= self.num_beams, time_step=self.timestep, integrator=self.integrator)        
+        self.sim = Simulator(self.params, self.num_agents, 
+                             seed=self.seed, num_beams= self.num_beams, 
+                             time_step=self.timestep, integrator=self.integrator)
         self._set_random_map()
         
         # stateful observations for rendering
@@ -142,20 +144,20 @@ class F110Env(gym.Env):
         
         # self.current_action = None
         
-        self.action_space = spaces.Box(low=np.array([self.params['s_min'], 0]), high=np.array([self.params['s_max'], self.params['sv_max']]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([self.params['s_min'], 0]), high=np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float32)
         
         self.observation_space = spaces.Dict({
-            'ego_idx': spaces.Box(low=0, high=self.num_agents - 1, shape=(1,), dtype=np.int32),
-            'scans': spaces.Box(low=0, high=100, shape=(self.num_beams, ), dtype=np.float32),
-            'poses_x': spaces.Box(low=-1000, high=1000, shape=(self.num_agents,), dtype=np.float32),      
-            'poses_y': spaces.Box(low=-1000, high=1000, shape=(self.num_agents,), dtype=np.float32),       
-            'poses_theta': spaces.Box(low=-2*np.pi, high=2*np.pi, shape=(self.num_agents,), dtype=np.float32),       
-            'linear_vels_x': spaces.Box(low=-10, high=10, shape=(self.num_agents,), dtype=np.float32),     
-            'linear_vels_y': spaces.Box(low=-10, high=10, shape=(self.num_agents,), dtype=np.float32),    
-            'ang_vels_z': spaces.Box(low=-10, high=10, shape=(self.num_agents,), dtype=np.float32),    
-            'collisions': spaces.Box(low=0, high=1, shape=(self.num_agents,), dtype=np.float32),   
-            'lap_times': spaces.Box(low=0, high=1e6, shape=(self.num_agents,), dtype=np.float32), 
-            'lap_counts': spaces.Box(low=0, high=9999, shape=(self.num_agents,), dtype=np.int32)    
+            'ego_idx': spaces.Box(0, self.num_agents - 1, (1,), np.int32),
+            'scans': spaces.Box(0, 100, (self.num_beams, ), np.float32),
+            'poses_x': spaces.Box(-1000, 1000, (self.num_agents,), np.float32),      
+            'poses_y': spaces.Box(-1000, 1000, (self.num_agents,), np.float32),       
+            'poses_theta': spaces.Box(-2*np.pi, 2*np.pi, (self.num_agents,),np.float32),
+            'linear_vels_x': spaces.Box(-10, 10, (self.num_agents,), np.float32),
+            'linear_vels_y': spaces.Box(-10, 10, (self.num_agents,), np.float32),    
+            'ang_vels_z': spaces.Box(-10, 10, (self.num_agents,), np.float32),    
+            'collisions': spaces.Box(0, 1, (self.num_agents,), np.float32),   
+            'lap_times': spaces.Box(0, 1e6, (self.num_agents,), np.float32), 
+            'lap_counts': spaces.Box(0, 9999, (self.num_agents,), np.int32)    
         })
         
         
@@ -241,9 +243,8 @@ class F110Env(gym.Env):
         
     def add_obstacles(self):
         s_data = self.map_csv_data[:,0]
-        max_s = s_data[-1]
         num_obstacles = random.randint(3, 20)
-        ds = max_s / num_obstacles
+        ds = self.map_max_s / num_obstacles
         obs_data = []
                 
         for i in range(1, num_obstacles):
@@ -283,6 +284,9 @@ class F110Env(gym.Env):
             
         self.map_origin = yaml_data['origin'][0:2]
         self.map_resolution = yaml_data['resolution']
+        self.map_max_s = self.map_csv_data[:,0][-1]
+        
+        print(self.map_max_s)
         
         self.add_obstacles()
         
@@ -402,11 +406,13 @@ class F110Env(gym.Env):
 
         # check done
         done, toggle_list = self._check_done()
+        
         info = {'checkpoint_done': done, 'lap_count' : self.lap_counts, 'lap_times' : obs['lap_times']}
         
         obs['scans'] = obs['scans'][0]
         obs = self._format_obs(obs)
         self.curr_obs = obs
+        self.render()
         return obs, 0, done, info
 
 

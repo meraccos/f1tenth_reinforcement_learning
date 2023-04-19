@@ -6,6 +6,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 from gym import spaces
 from reward import NewReward
+from copy import copy
 
 from sklearn.neighbors import KDTree
 
@@ -30,21 +31,21 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         self.kdtree = KDTree(self.map_data[:, 1:3])
                 
         self.observation_space = spaces.Dict({
-            'ego_idx': spaces.Box(low=0, high=self.num_agents - 1, shape=(1,), dtype=np.int32),
-            'scans': spaces.Box(low=0, high=100, shape=(NUM_BEAMS, ), dtype=np.float32),
-            'poses_x': spaces.Box(low=-1000, high=1000, shape=(self.num_agents,), dtype=np.float32),
-            'poses_y': spaces.Box(low=-1000, high=1000, shape=(self.num_agents,), dtype=np.float32), 
-            'poses_theta': spaces.Box(low=-2*np.pi, high=2*np.pi, shape=(self.num_agents,), dtype=np.float32),
-            'linear_vels_x': spaces.Box(low=-10, high=10, shape=(self.num_agents,), dtype=np.float32),
-            'linear_vels_y': spaces.Box(low=-10, high=10, shape=(self.num_agents,), dtype=np.float32),
-            'ang_vels_z': spaces.Box(low=-10, high=10, shape=(self.num_agents,), dtype=np.float32),    
-            'collisions': spaces.Box(low=0, high=1, shape=(self.num_agents,), dtype=np.float32),   
-            'lap_times': spaces.Box(low=0, high=1e6, shape=(self.num_agents,), dtype=np.float32), 
-            'lap_counts': spaces.Box(low=0, high=9999, shape=(self.num_agents,), dtype=np.int32),
-            'poses_s': spaces.Box(low=-1000, high=1000, shape=(1,), dtype=np.float32),
-            'poses_d': spaces.Box(low=-1000, high=1000, shape=(1,), dtype=np.float32),
-            'linear_vels_s': spaces.Box(low=-10, high=10, shape=(1,), dtype=np.float32),
-            'linear_vels_d': spaces.Box(low=-10, high=10, shape=(1,), dtype=np.float32)
+            'ego_idx': spaces.Box(0, self.num_agents - 1, (1,), np.int32),
+            'scans': spaces.Box(0, 100, (NUM_BEAMS, ), np.float32),
+            'poses_x': spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
+            'poses_y': spaces.Box(-1000, 1000, (self.num_agents,), np.float32), 
+            'poses_theta': spaces.Box(-2*np.pi, 2*np.pi, (self.num_agents,), np.float32),
+            'linear_vels_x': spaces.Box(-10, 10, (self.num_agents,), np.float32),
+            'linear_vels_y': spaces.Box(-10, 10, (self.num_agents,), np.float32),
+            'ang_vels_z': spaces.Box(-10, 10, (self.num_agents,), np.float32),
+            'collisions': spaces.Box(0, 1, (self.num_agents,), np.float32),
+            'lap_times': spaces.Box(0, 1e6, (self.num_agents,), np.float32),
+            'lap_counts': spaces.Box(0, 9999, (self.num_agents,), np.int32),
+            'poses_s': spaces.Box(-1000, 1000, (1,), np.float32),
+            'poses_d': spaces.Box(-1000, 1000, (1,), np.float32),
+            'linear_vels_s': spaces.Box(-10, 10, (1,), np.float32),
+            'linear_vels_d': spaces.Box(-10, 10, (1,), np.float32)
         })
 
     def observation(self, obs):
@@ -52,24 +53,29 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         poses_y = obs['poses_y'][0]
         vel_magnitude = obs['linear_vels_x']
         poses_theta = obs['poses_theta'][0]
+
+        frenet_coords = convert_to_frenet(poses_x, poses_y,
+                                          vel_magnitude, poses_theta,
+                                          self.map_data, self.kdtree)
+
+        self.poses_s = np.array(frenet_coords[0]).reshape((1, -1))
         
-        frenet_coords = convert_to_frenet(poses_x, poses_y, vel_magnitude, 
-                                          poses_theta, self.map_data, self.kdtree)
-        
+        print(self.poses_s)
+
         obs['poses_s'] = np.array(frenet_coords[0]).reshape((1, -1))
         obs['poses_d'] = np.array(frenet_coords[1])
         obs['linear_vels_s'] = np.array(frenet_coords[2]).reshape((1, -1))
         obs['linear_vels_d'] = np.array(frenet_coords[3])
 
         return obs
-    
-    
+
+
 class ReducedObs(gym.ObservationWrapper):
     def __init__(self, env):
         super(ReducedObs, self).__init__(env)
 
         self.observation_space = spaces.Dict({
-            'scans': spaces.Box(low=0, high=100, shape=(NUM_BEAMS, ), dtype=np.float32),
+            'scans': spaces.Box(0, 100, (NUM_BEAMS, ), np.float32),
         })
 
     def observation(self, obs):        
@@ -84,7 +90,7 @@ class ReducedObs(gym.ObservationWrapper):
         del obs['lap_counts']
         del obs['ang_vels_z']
         del obs['poses_theta']
-        
+
         del obs['poses_s']
         del obs['poses_d']
         del obs['linear_vels_s']
@@ -100,8 +106,8 @@ class ReducedObs(gym.ObservationWrapper):
 #         self.save_interval = save_interval
 #         self.save_path = save_path
         
-#         self.lap_counts = np.zeros(100, dtype=int)
-#         self.first_lap_times = np.zeros(100, dtype=float)
+#         self.lap_counts = np.zeros(100, int)
+#         self.first_lap_times = np.zeros(100, float)
 #         self.episode_index = 0
 
 #     def _on_step(self) -> bool:
@@ -128,15 +134,72 @@ class TensorboardCallback(BaseCallback):
         
         self.save_interval = save_interval
         self.save_path = save_path
+        self.prev_s = 0.0
+        self.prev_lap_times = 0.0
+        self.max_s_frac = 0.0
+        self.max_s = 100.0
+        
+        self.half_past = False
 
     def _on_step(self) -> bool:
+        
+        vec_env = self.locals.get("env")
+        env = vec_env.get_attr("env")[0]
+        
+        infos = self.locals.get("infos", [{}])[0]
+        checkpoint_done = infos.get("checkpoint_done", False)
+        
+        lap_counts = copy(env.lap_counts)
+        
+        
+        # Check if half the track is passed
+        half_frac = 5/12
+        if env.poses_s >= self.max_s * half_frac and env.poses_s <= self.max_s * (1 - half_frac):
+            self.half_past = True
+        
+        
+
+        if checkpoint_done:
+            # Calculate the fraction
+            print('the env pose_s ', env.poses_s)
+            self.max_s_frac = copy(self.prev_s / self.max_s)
+            
+
+            # Check for false lap (crossing the finish line backwards)
+            if not self.half_past and self.max_s_frac >= 0.5:
+                print('false lap')
+                self.max_s_frac -= 1.0
+                
+            
+            # Account for the subsequent laps
+            if self.half_past and lap_counts == 1:
+                self.max_s_frac += float(lap_counts)
+                
+            
+            if self.max_s_frac >= 0.3:
+                print(self.prev_lap_times)
+                print(self.half_past)
+                
+            print('\n\n\n\n\n FRAC CHANGED: ', self.prev_s, self.max_s, self.max_s_frac)
+            
+        
+            
+        self.prev_s = copy(env.poses_s)
+        self.prev_lap_times = copy(env.lap_times)
+        self.max_s = copy(env.map_max_s)
+        
+        # Save the model
         if self.num_timesteps % self.save_interval == 0:
             self.model.save(f"{self.save_path}_{self.num_timesteps}")
 
+        # Log the track fraction
+        self.logger.record("rollout/track_fraction", float(self.max_s_frac))
+        
         return True
     
     
     
+        
 def read_csv(file_path):
     data = np.genfromtxt(file_path, delimiter=';', skip_header=1)
     return data
