@@ -35,17 +35,17 @@ def objective(trial):
 
 
     # Define hyperparameters to optimize
-    # n_steps = trial.suggest_int('n_steps', 16, 2048)
-    # gamma = trial.suggest_float('gamma', 0.9, 0.9999)
+    n_steps = trial.suggest_int('n_steps', 16, 2048)
+    gamma = trial.suggest_float('gamma', 0.9, 0.9999)
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
-    # ent_coef = trial.suggest_float("ent_coef", 1e-8, 1, log=True)
-    # clip_range = trial.suggest_float('clip_range', 0.1, 0.4)
-    # n_epochs = trial.suggest_int('n_epochs', 1, 10)
+    ent_coef = trial.suggest_float("ent_coef", 1e-8, 1, log=True)
+    clip_range = trial.suggest_float('clip_range', 0.1, 0.4)
+    n_epochs = trial.suggest_int('n_epochs', 1, 10)
 
     # Create the PPO agent
-    # model = PPO("MultiInputPolicy", env, verbose=0, n_steps=n_steps, gamma=gamma, learning_rate=learning_rate,
-    #             ent_coef=ent_coef, clip_range=clip_range, n_epochs=n_epochs)
-    model = PPO("MultiInputPolicy", env, verbose=0, learning_rate=learning_rate)
+    model = PPO("MultiInputPolicy", env, verbose=0, n_steps=n_steps, gamma=gamma, learning_rate=learning_rate,
+                ent_coef=ent_coef, clip_range=clip_range, n_epochs=n_epochs)
+    # model = PPO("MultiInputPolicy", env, verbose=0, learning_rate=learning_rate)
 
     # Train the agent
     # eval_env = gym.make('YourCustomGymEnvironment-v0')
