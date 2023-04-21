@@ -4,6 +4,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from f110_gym.envs.base_classes import Integrator
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import VecNormalize
 from gym import spaces
 from reward import NewReward
 from copy import copy
@@ -28,6 +29,8 @@ def create_env(maps=[0], seed=5):
     env = ReducedObs(env)
     env = NormalizeActionWrapper(env)
     env = Monitor(env)
+    env = DummyVecEnv([lambda: env])
+    env = VecNormalize(env)
     # env = DummyVecEnv([lambda: env])
     return env
 

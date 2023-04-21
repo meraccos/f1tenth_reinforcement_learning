@@ -371,16 +371,16 @@ class F110Env(gym.Env):
         max_episode_time = 100
         if (self.collisions[self.ego_idx]):
             done = True
-            print('collided')
+            # print('collided')
         elif np.all(self.toggle_list >= 4):
             done = True
-            print('toggle list?')
+            # print('toggle list?')
         elif self.current_time >= max_episode_time and self.lap_counts==0:
             done = True
-            print('time exceed')
+            # print('time exceed')
         elif self.lap_counts == 3:
             done = True
-            print('3 laps done')
+            # print('3 laps done')
         else:
             done = False
 
