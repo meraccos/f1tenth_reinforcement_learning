@@ -13,11 +13,12 @@ from sklearn.neighbors import KDTree
 NUM_BEAMS = 1080
 
 
-def create_env(maps=[0]):
+def create_env(maps=[0], seed=5):
     env = gym.make(
         "f110_gym:f110-v0",
         num_agents=1,
         maps=maps,
+        seed=seed,
         num_beams=NUM_BEAMS,
         integrator=Integrator.RK4,
     )
@@ -27,7 +28,7 @@ def create_env(maps=[0]):
     env = ReducedObs(env)
     env = NormalizeActionWrapper(env)
     env = Monitor(env)
-    env = DummyVecEnv([lambda: env])
+    # env = DummyVecEnv([lambda: env])
     return env
 
 
@@ -62,7 +63,9 @@ class FrenetObsWrapper(gym.ObservationWrapper):
                 "scans": spaces.Box(0, 100, (NUM_BEAMS,), np.float32),
                 "poses_x": spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
                 "poses_y": spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
-                "poses_theta": spaces.Box(-2 * np.pi, 2 * np.pi, (self.num_agents,), np.float32),
+                "poses_theta": spaces.Box(
+                    -2 * np.pi, 2 * np.pi, (self.num_agents,), np.float32
+                ),
                 "linear_vels_x": spaces.Box(-10, 10, (self.num_agents,), np.float32),
                 "linear_vels_y": spaces.Box(-10, 10, (self.num_agents,), np.float32),
                 "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), np.float32),
@@ -142,8 +145,12 @@ class TensorboardCallback(BaseCallback):
         self.max_s = 100.0
 
         self.lap_countss = np.zeros(100, int)
+        self.collision_countss = np.ones(100, int)
+
         self.episode_index = 0
+
         self.success_rate = 0.0
+        self.collision_rate = 1.0
 
     def _on_step(self) -> bool:
         vec_env = self.locals.get("env")
@@ -155,15 +162,17 @@ class TensorboardCallback(BaseCallback):
         if checkpoint_done:
             # Calculate the fraction
             self.max_s_frac = copy(self.prev_s / self.max_s)
-            
-            if self.prev_lap_times <=20.0 and self.max_s_frac > 0.5:
+
+            if self.prev_lap_times <= 20.0 and self.max_s_frac > 0.5:
                 self.max_s_frac -= 1.0
             else:
                 self.max_s_frac += float(self.prev_lap_counts)
 
             self.lap_countss[self.episode_index] = infos.get("lap_count", 0)
+            self.collision_countss[self.episode_index] = int(env.collided)
             self.episode_index = (self.episode_index + 1) % 100
             self.success_rate = np.mean(self.lap_countss >= 1)
+            self.collision_rate = np.mean(self.collision_countss == 1)
 
         self.prev_s = copy(env.poses_s)
         self.prev_lap_times = copy(env.lap_times)
@@ -177,6 +186,7 @@ class TensorboardCallback(BaseCallback):
         # Log the track fraction
         self.logger.record("rollout/track_fraction", float(self.max_s_frac))
         self.logger.record("rollout/success_rate", float(self.success_rate))
+        self.logger.record("rollout/collision_rate", float(self.collision_rate))
 
         return True
 

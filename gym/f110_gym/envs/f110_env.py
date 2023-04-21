@@ -139,6 +139,7 @@ class F110Env(gym.Env):
                              seed=self.seed, num_beams= self.num_beams, 
                              time_step=self.timestep, integrator=self.integrator)
         self._set_random_map()
+        self.collided=False
         
         # stateful observations for rendering
         self.render_obs = None
@@ -268,8 +269,9 @@ class F110Env(gym.Env):
     
     
     def _set_random_map(self):
-        random.seed(time.time())
+        # random.seed(time.time())
         self.map_idx = random.randint(0, len(self.maps) - 1)
+        # print(self.map_idx)
         self.map_dir = '/Users/meraj/workspace/f1tenth_gym/work/tracks'
         self.map_name = 'map{}'.format(self.maps[self.map_idx])
         
@@ -364,14 +366,23 @@ class F110Env(gym.Env):
         self.lap_times = np.where(self.toggle_list < 4, self.current_time, self.lap_times)
 
         done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
+        # print(self.collisions[self.ego_idx])
         
-        max_episode_time = 800
-        
-        if self.current_time >= max_episode_time and self.lap_counts==0:
+        max_episode_time = 100
+        if (self.collisions[self.ego_idx]):
             done = True
-        
-        if self.lap_counts == 3:
+            print('collided')
+        elif np.all(self.toggle_list >= 4):
             done = True
+            print('toggle list?')
+        elif self.current_time >= max_episode_time and self.lap_counts==0:
+            done = True
+            print('time exceed')
+        elif self.lap_counts == 3:
+            done = True
+            print('3 laps done')
+        else:
+            done = False
 
         return bool(done), self.toggle_list >= 4
 
@@ -434,12 +445,10 @@ class F110Env(gym.Env):
             done (bool): if the simulation is done
             info (dict): auxillary information dictionary
         """
-        random.seed(time.time())
         self._set_random_map()
         
         if poses is None:
             # Generate random poses for the agents
-            random.seed(time.time())
             init_x = np.random.uniform(-0.3, 0.3)
             init_y = np.random.uniform(-0.3, 0.3)
             init_angle = np.pi/2 + self.map_csv_data[1, 3] + np.random.uniform(-np.pi/12, np.pi/12)

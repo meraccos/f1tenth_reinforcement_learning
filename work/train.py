@@ -1,29 +1,34 @@
 from stable_baselines3 import PPO
 from utils import TensorboardCallback, create_env
+import random
 
-save_interval = 50_000
-save_path = "./models/new_reward_11"
+save_interval = 100_000
+save_path = "./models/new_reward_tuned"
 log_dir = "./metrics/"
-log_name = "new_reward_11"
+log_name = "new_reward_tuned"
 maps = list(range(1, 250))
 
-env = create_env(maps=maps)
+random.seed(5)
+
+env = create_env(maps=maps, seed=5)
 
 model = PPO(
     "MultiInputPolicy",
     env,
     verbose=2,
-    # n_steps=2048,
-    # ent_coef=0.001,
-    learning_rate=0.0001,
+    n_steps=1865,
+    ent_coef=0.032233448682464166,
+    learning_rate=0.00020587950431376638,
+    # batch_size=128,
     # vf_coef=0.5,
     # max_grad_norm=0.5,
     # gae_lambda=0.95,
-    # gamma=0.99,
-    # n_epochs=10,
-    # clip_range=0.2,  # Adjust this value as needed
+    gamma=0.9151909702089307,
+    n_epochs=4,
+    clip_range=0.14766513397642733,  # Adjust this value as needed
     # use_sde=True,
     tensorboard_log=log_dir,
+    device="cpu",
 )
 
 # model_path = "models/ppo_model_7000000.zip"
