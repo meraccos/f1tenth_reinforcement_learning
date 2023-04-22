@@ -30,7 +30,7 @@ def create_env(maps=[0], seed=5):
     env = NormalizeActionWrapper(env)
     env = Monitor(env)
     env = DummyVecEnv([lambda: env])
-    env = VecNormalize(env)
+    env = VecNormalize(env, norm_reward=True, norm_obs=False)
     # env = DummyVecEnv([lambda: env])
     return env
 
@@ -57,7 +57,7 @@ class FrenetObsWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super(FrenetObsWrapper, self).__init__(env)
 
-        self.map_data = env.map_csv_data
+        self.map_data = copy(env.map_csv_data)
         self.kdtree = KDTree(self.map_data[:, 1:3])
 
         self.observation_space = spaces.Dict(
@@ -83,10 +83,11 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         )
 
     def observation(self, obs):
-        poses_x = obs["poses_x"][0]
-        poses_y = obs["poses_y"][0]
-        vel_magnitude = obs["linear_vels_x"]
-        poses_theta = obs["poses_theta"][0]
+        new_obs = copy(obs)
+        poses_x = new_obs["poses_x"][0]
+        poses_y = new_obs["poses_y"][0]
+        vel_magnitude = new_obs["linear_vels_x"]
+        poses_theta = new_obs["poses_theta"][0]
 
         frenet_coords = convert_to_frenet(
             poses_x, poses_y, vel_magnitude, poses_theta, self.map_data, self.kdtree
@@ -94,12 +95,12 @@ class FrenetObsWrapper(gym.ObservationWrapper):
 
         self.poses_s = np.array(frenet_coords[0]).reshape((1, -1))
 
-        obs["poses_s"] = np.array(frenet_coords[0]).reshape((1, -1))
-        obs["poses_d"] = np.array(frenet_coords[1])
-        obs["linear_vels_s"] = np.array(frenet_coords[2]).reshape((1, -1))
-        obs["linear_vels_d"] = np.array(frenet_coords[3])
+        new_obs["poses_s"] = np.array(frenet_coords[0]).reshape((1, -1))
+        new_obs["poses_d"] = np.array(frenet_coords[1])
+        new_obs["linear_vels_s"] = np.array(frenet_coords[2]).reshape((1, -1))
+        new_obs["linear_vels_d"] = np.array(frenet_coords[3])
 
-        return obs
+        return new_obs
 
 
 class ReducedObs(gym.ObservationWrapper):
@@ -114,8 +115,39 @@ class ReducedObs(gym.ObservationWrapper):
                 "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), np.float32),
             }
         )
+        # self.means = []
+        # self.mins = []
+        # self.maxs = []
+        # self.stds = []
+        # self.counter = 0
 
     def observation(self, obs):
+        
+        # Observation scaling trial
+        obs["linear_vels_x"] = obs["linear_vels_x"] / 3.2
+        obs["linear_vels_y"] = obs["linear_vels_y"] / 3.2
+        obs["ang_vels_z"] /= 3.0
+        
+        obs["scans"] = np.sqrt(obs["scans"]+1.0) / 1.5 - 1.80
+        # obs["scans"] = np.sqrt(obs["scans"]+1.0) / 1.67 - 1.17
+        
+        # obs["scans"] /=0.4
+
+        # self.means.append(np.mean(obs["scans"]))
+        # self.mins.append(min(obs["scans"]))
+        # self.maxs.append(max(obs["scans"]))
+        # self.stds.append(np.std(obs["scans"]))
+        
+        
+        # if self.counter % 1000 == 0:
+        #     print(np.mean(self.means), np.std(self.means))
+        #     print(np.mean(self.mins), np.std(self.mins))
+        #     print(np.mean(self.maxs), np.std(self.maxs))
+        #     print(np.mean(self.stds), np.std(self.stds))
+        #     print()
+        
+        # self.counter +=1
+        
         del obs["poses_x"]
         del obs["poses_y"]
         # del obs["linear_vels_x"]
@@ -163,6 +195,10 @@ class TensorboardCallback(BaseCallback):
         checkpoint_done = infos.get("checkpoint_done", False)
 
         if checkpoint_done:
+            if env.collided:
+                print('collided')
+            else:
+                print('not collided')
             # Calculate the fraction
             self.max_s_frac = copy(self.prev_s / self.max_s)
 

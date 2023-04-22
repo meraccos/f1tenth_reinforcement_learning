@@ -8,7 +8,7 @@ maps = list(range(1, 250))
 env = create_env(maps=maps)
 env.training = False
 
-model = "/Users/meraj/workspace/f1tenth_gym/work/models/new_reward_7_700000"
+model = "/Users/meraj/workspace/f1tenth_gym/work/models/obs_normalized2_500000"
 
 model = PPO.load(path=model, env=env)
 
@@ -24,7 +24,9 @@ while not done:
     obs, reward, done, info = env.step(action)
 
     # Get the LiDAR data from obs
-    lidar_data = obs["scans"]
+    # lidar_data = np.log10(obs["scans"]+1)
+    # lidar_data = np.sqrt(obs["scans"])
+    lidar_data = obs["scans"] = np.sqrt(obs["scans"]+1.0) / 1.5 
 
     # Convert LiDAR data to polar coordinates
     num_angles = lidar_data.size

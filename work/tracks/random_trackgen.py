@@ -61,7 +61,7 @@ def create_track():
     TRACK_RAD = 900/SCALE
     TRACK_DETAIL_STEP = 21/SCALE
     TRACK_TURN_RATE = 0.31
-    WIDTH = 10.0 + random.randint(-5,5)
+    WIDTH = 10.0 + random.randint(-2,5)
     
     start_alpha = 0.
 

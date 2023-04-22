@@ -15,43 +15,39 @@ class NewReward(gym.Wrapper):
         d = new_obs["poses_d"]
 
         reward = 0
-
-        # Penalize the agent for being slow
-        if np.sqrt(vs**2 + vd**2) < 0.25:
+        
+        vel_mag = np.sqrt(vs**2+vd**2)
+        if vel_mag <= 0.25:
             reward -= 2.0
+
+        # Encourage the agent to move in the vs direction and penalize for moving in the vd direction
+        reward += 1.0 * vs
+        reward -= 0.01 * abs(vd)
 
         # Penalize the agent for collisions
         if self.env.collisions[0]:
-            reward -= 1000.0
-            # reward -= 1.0
+            reward -= 2000.0
             self.collided = True
         else:
-            reward += 1.0
+            reward += 0.01
             self.collided = False
 
-        # Encourage the agent to move in the vs direction
-        reward += 2.0 * vs
-        reward -= 0.5 * abs(vd)
+        # Minimize d (encourage the agent to stay near the center of the track)
+        reward -= 0.05 * abs(d)
 
-        # Minimize d
-        if abs(d) < 0.5:
-            reward += 0.1
-        else:
-            reward -= 0.1
-
-        # Angular velocity penalty
-        reward -= -min(0.5, abs(w))
+        # Angular velocity penalty (discourage sharp turns)
+        reward -= 0.05 * abs(w)
 
         # Penalize the agent for getting too close to walls or obstacles
-        min_distance = np.min(new_obs["scans"])
+        min_distance = abs(np.min(new_obs["scans"]))
         distance_threshold = 0.5
         if min_distance < distance_threshold:
-            reward -= (distance_threshold - min_distance) * 10
+            reward -= 0.01 * (distance_threshold - min_distance)
 
         return reward
 
+
     def step(self, action):
-        obs, _, done, info = self.env.step(action)
-        self.current_action = action
-        new_reward = self.reward(obs)
+        obs, _, done, info = copy(self.env.step(action))
+        new_reward = copy(self.reward(obs))
         return obs, new_reward.item(), done, info
