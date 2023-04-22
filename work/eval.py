@@ -6,7 +6,7 @@ maps = list(range(1, 200))
 env = create_env(maps=maps)
 env.training = False
 
-model = "/Users/meraj/workspace/f1tenth_gym/work/models/norm_rew3_batch256_10000000"
+model = "models/norm_obs_self_v3_1700000"
 
 model = PPO.load(path=model, env=env)
 

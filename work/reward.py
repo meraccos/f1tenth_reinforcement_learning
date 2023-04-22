@@ -15,12 +15,12 @@ class NewReward(gym.Wrapper):
         d = new_obs["poses_d"]
 
         reward = 0
-        
-        vel_mag = np.sqrt(vs**2+vd**2)
+
+        vel_mag = np.sqrt(vs**2 + vd**2)
         if vel_mag <= 0.25:
             reward -= 2.0
 
-        # Encourage the agent to move in the vs direction and penalize for moving in the vd direction
+        # Encourage the agent to move in the vs direction
         reward += 1.0 * vs
         reward -= 0.01 * abs(vd)
 
@@ -45,7 +45,6 @@ class NewReward(gym.Wrapper):
             reward -= 0.01 * (distance_threshold - min_distance)
 
         return reward
-
 
     def step(self, action):
         obs, _, done, info = copy(self.env.step(action))

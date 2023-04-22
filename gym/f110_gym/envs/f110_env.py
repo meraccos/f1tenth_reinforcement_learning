@@ -39,6 +39,7 @@ WINDOW_W = 1000
 WINDOW_H = 800
 DTYPE = np.float32
 
+
 class F110Env(gym.Env):
     """
     OpenAI gym environment for F1TENTH
@@ -66,7 +67,8 @@ class F110Env(gym.Env):
             s_max: Maximum steering angle constraint
             sv_min: Minimum steering velocity constraint
             sv_max: Maximum steering velocity constraint
-            v_switch: Switching velocity (velocity at which the acceleration is no longer able to create wheel spin)
+            v_switch: Switching velocity (velocity at which the acceleration
+                is no longer able to create wheel spin)
             a_max: Maximum longitudinal acceleration
             v_min: Minimum longitudinal velocity
             v_max: Maximum longitudinal velocity
@@ -136,33 +138,33 @@ class F110Env(gym.Env):
 
         # initiate stuff
         self.sim = Simulator(self.params, self.num_agents, 
-                             seed=self.seed, num_beams= self.num_beams, 
-                             time_step=self.timestep, integrator=self.integrator)
+                             seed=self.seed, num_beams=self.num_beams, 
+                             time_step=self.timestep,
+                             integrator=self.integrator)
         self._set_random_map()
-        self.collided=False
+        self.collided = False
         
         # stateful observations for rendering
         self.render_obs = None
         
         # self.current_action = None
         
-        self.action_space = spaces.Box(low=np.array([self.params['s_min'], 0]), high=np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float32)
+        self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float32)
         
         self.observation_space = spaces.Dict({
             'ego_idx': spaces.Box(0, self.num_agents - 1, (1,), np.int32),
             'scans': spaces.Box(0, 100, (self.num_beams, ), np.float32),
-            'poses_x': spaces.Box(-1000, 1000, (self.num_agents,), np.float32),      
-            'poses_y': spaces.Box(-1000, 1000, (self.num_agents,), np.float32),       
+            'poses_x': spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
+            'poses_y': spaces.Box(-1000, 1000, (self.num_agents,), np.float32), 
             'poses_theta': spaces.Box(-2*np.pi, 2*np.pi, (self.num_agents,),np.float32),
             'linear_vels_x': spaces.Box(-10, 10, (self.num_agents,), np.float32),
-            'linear_vels_y': spaces.Box(-10, 10, (self.num_agents,), np.float32),    
-            'ang_vels_z': spaces.Box(-10, 10, (self.num_agents,), np.float32),    
-            'collisions': spaces.Box(0, 1, (self.num_agents,), np.float32),   
-            'lap_times': spaces.Box(0, 1e6, (self.num_agents,), np.float32), 
-            'lap_counts': spaces.Box(0, 9999, (self.num_agents,), np.int32)    
+            'linear_vels_y': spaces.Box(-10, 10, (self.num_agents,), np.float32),
+            'ang_vels_z': spaces.Box(-10, 10, (self.num_agents,), np.float32),
+            'collisions': spaces.Box(0, 1, (self.num_agents,), np.float32),
+            'lap_times': spaces.Box(0, 1e6, (self.num_agents,), np.float32),
+            'lap_counts': spaces.Box(0, 9999, (self.num_agents,), np.int32)
         })
-        
-        
+
     def find_closest_index(self, sorted_list, target):
         left, right = 0, len(sorted_list) - 1
 
@@ -176,35 +178,47 @@ class F110Env(gym.Env):
             else:
                 right = mid
 
-        if left > 0 and abs(sorted_list[left - 1] - target) <= abs(sorted_list[left] - target):
+        cond = abs(sorted_list[left - 1] - target) <= abs(sorted_list[left] - target)
+        if left > 0 and cond:
             return left - 1
 
         return left
-    
-    
+
     def add_random_shapes(self, image_path, coordinates_list):
         image = cv2.imread(image_path)
-        # shape_choices = ["rectangle", "circle", "triangle", "ellipse", "rounded_rectangle"]
-        shape_choices = ["rectangle", "circle", "triangle", "ellipse", "rounded_rectangle", "pentagon", "hexagon", "star"]
+        shape_choices = ["rectangle", "circle", "triangle",
+                         "ellipse", "rounded_rectangle",
+                         "pentagon", "hexagon", "star"]
 
         for coord in coordinates_list:
             x = int(coord[0])
             y = 1600 - int(coord[1])
             size = int(coord[2])
             shape = random.choice(shape_choices)
-            color = (0, 0, 0) 
+            color = (0, 0, 0)
 
             if shape == "rectangle":
                 center_x, center_y = x + size//2, y + size//2
-                cv2.rectangle(image, (center_x - size//2, center_y - size//2), (center_x + size//2, center_y + size//2), color, -1)
+                cv2.rectangle(image, (center_x - size//2, center_y - size//2),
+                              (center_x + size//2, center_y + size//2),
+                              color, -1)
+
             elif shape == "circle":
                 cv2.circle(image, (x, y), size // 2, color, -1)
+
             elif shape == "triangle":
-                points = np.array([[(x + size//2, y), (x + size, y + size), (x, y + size)]], dtype=np.int32)
+                points = np.array([[(x + size//2, y),
+                                    (x + size, y + size),
+                                    (x, y + size)]], dtype=np.int32)
                 cv2.fillPoly(image, points, color)
+
             elif shape == "ellipse":
                 center_x, center_y = x + size//2, y + size//2
-                cv2.ellipse(image, (center_x, center_y), (size//2, size//4), 0, 0, 360, color, -1)
+                cv2.ellipse(image,
+                            (center_x, center_y),
+                            (size//2, size//4),
+                            0, 0, 360, color, -1)
+
             elif shape == "rounded_rectangle":
                 rx, ry = size // 5, size // 5
                 cv2.rectangle(image, (x + rx, y), (x + size - rx, y + size), color, -1)
@@ -213,12 +227,24 @@ class F110Env(gym.Env):
                 cv2.circle(image, (x + size - rx, y + ry), ry, color, -1)
                 cv2.circle(image, (x + rx, y + size - ry), ry, color, -1)
                 cv2.circle(image, (x + size - rx, y + size - ry), ry, color, -1)
+                
             elif shape == "pentagon":
-                points = np.array([[x + size // 2, y], [x + size, y + size // 3], [x + 3 * size // 4, y + size], [x + size // 4, y + size], [x, y + size // 3]], dtype=np.int32)
+                points = np.array([[x + size // 2, y],
+                                   [x + size, y + size // 3],
+                                   [x + 3 * size // 4, y + size],
+                                   [x + size // 4, y + size],
+                                   [x, y + size // 3]], dtype=np.int32)
                 cv2.fillPoly(image, [points], color)
+                
             elif shape == "hexagon":
-                points = np.array([[x + size // 4, y], [x + 3 * size // 4, y], [x + size, y + size // 2], [x + 3 * size // 4, y + size], [x + size // 4, y + size], [x, y + size // 2]], dtype=np.int32)
+                points = np.array([[x + size // 4, y],
+                                   [x + 3 * size // 4, y],
+                                   [x + size, y + size // 2],
+                                   [x + 3 * size // 4, y + size],
+                                   [x + size // 4, y + size],
+                                   [x, y + size // 2]], dtype=np.int32)
                 cv2.fillPoly(image, [points], color)
+                
             elif shape == "star":
                 outer_radius = size // 2
                 inner_radius = outer_radius // 2
@@ -241,67 +267,67 @@ class F110Env(gym.Env):
         output_image_path = file_name + "_obs" + file_extension
         self.map_name = self.map_name + "_obs"
         cv2.imwrite(output_image_path, image)
-        
-        
+
     def add_obstacles(self):
-        s_data = self.map_csv_data[:,0]
+        s_data = self.map_csv_data[:, 0]
         num_obstacles = random.randint(3, 20)
         ds = self.map_max_s / num_obstacles
         obs_data = []
-                
+
         for i in range(1, num_obstacles):
             target = i * ds
             closest_index = self.find_closest_index(s_data, target)
             width = self.map_width[closest_index]
-            
+
             obs_size = width / random.uniform(1.0, 4.0)
-            obs_x = self.map_csv_data[closest_index, 1] 
-            obs_y = self.map_csv_data[closest_index, 2] 
-            
+            obs_x = self.map_csv_data[closest_index, 1]
+            obs_y = self.map_csv_data[closest_index, 2]
+
             random_disp = random.uniform(0, width)
             random_angle = random.uniform(0, 2*np.pi)
-                        
-            obs_x_img = (obs_x - self.map_origin[0]) / self.map_resolution + random_disp * np.cos(random_angle)
-            obs_y_img = (obs_y - self.map_origin[1]) / self.map_resolution + random_disp * np.sin(random_angle)
+
+            obs_x_img = (obs_x - self.map_origin[0]) / self.map_resolution
+            obs_y_img = (obs_y - self.map_origin[1]) / self.map_resolution
+
+            random_dx = random_disp * np.cos(random_angle)
+            random_dy = random_disp * np.sin(random_angle)
+
+            obs_x_img += random_dx
+            obs_y_img += random_dy
+
             obs_data.append((obs_x_img, obs_y_img, obs_size))
-        
+
         self.add_random_shapes(image_path=self.map_png, coordinates_list=obs_data)
-    
-    
+
     def _set_random_map(self):
-        # random.seed(time.time())
         self.map_idx = random.randint(0, len(self.maps) - 1)
-        # print(self.map_idx)
         self.map_dir = '/Users/meraj/workspace/f1tenth_gym/work/tracks'
         self.map_name = 'map{}'.format(self.maps[self.map_idx])
-        
+
         self.map_csv = f"{self.map_dir}/centerline/{self.map_name}.csv"
         self.map_csv_data = np.array(self.read_csv(self.map_csv))
         self.map_width = self.map_csv_data[:, -1] * 2.0
-        
-        self.map_yaml= f"{self.map_dir}/maps/{self.map_name}.yaml"
+
+        self.map_yaml = f"{self.map_dir}/maps/{self.map_name}.yaml"
         self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
-        
+
         with open(self.map_yaml, 'r') as file:
             yaml_data = yaml.safe_load(file)
-            
+
         self.map_origin = yaml_data['origin'][0:2]
         self.map_resolution = yaml_data['resolution']
-        self.map_max_s = self.map_csv_data[:,0][-1]
-                
+        self.map_max_s = self.map_csv_data[:, 0][-1]
+
         self.add_obstacles()
-        
-        self.map_yaml= f"{self.map_dir}/maps/{self.map_name}.yaml"
+
+        self.map_yaml = f"{self.map_dir}/maps/{self.map_name}.yaml"
         self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
-        
+
         self.update_map(self.map_yaml)
-        
-        
+
     def read_csv(self, file_path):
         data = np.genfromtxt(file_path, delimiter=';', skip_header=1)
         return data
-    
-    
 
     def update_map(self, map_path):
         """
@@ -311,9 +337,8 @@ class F110Env(gym.Env):
             map_path (str): Absolute path to the map YAML file.
             map_ext (str): Extension of the map image file.
         """
-        # print(map_path)
         self.sim.set_map(map_path, '.png')
-        
+
     def __del__(self):
         """
         Finalizer, does cleanup
@@ -329,7 +354,8 @@ class F110Env(gym.Env):
 
         Returns:
             done (bool): whether the rollout is done
-            toggle_list (list[int]): each agent's toggle list for crossing the finish zone
+            toggle_list (list[int]): each agent's toggle list
+                        for crossing finish line
         """
 
         # this is assuming 2 agents
@@ -340,13 +366,14 @@ class F110Env(gym.Env):
         poses_x = np.array(self.poses_x)-self.start_xs
         poses_y = np.array(self.poses_y)-self.start_ys
         delta_pt = np.dot(self.start_rot, np.stack((poses_x, poses_y), axis=0))
-        temp_y = delta_pt[1,:]
+        temp_y = delta_pt[1, :]
         # idx1 = temp_y > left_t
         # idx2 = temp_y < -right_t
         # temp_y[idx1] -= left_t
         # temp_y[idx2] = -right_t - temp_y[idx2]
         # temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
-        temp_y = np.where(temp_y > left_t, temp_y - left_t, np.where(temp_y < -right_t, -right_t - temp_y, 0))
+        temp_y = np.where(temp_y > left_t, temp_y - left_t,
+                          np.where(temp_y < -right_t, -right_t - temp_y, 0))
 
         dist2 = delta_pt[0, :]**2 + temp_y**2
         closes = dist2 <= 0.1
@@ -360,14 +387,17 @@ class F110Env(gym.Env):
         #     self.lap_counts[i] = self.toggle_list[i] // 2
         #     if self.toggle_list[i] < 4:
         #         self.lap_times[i] = self.current_time
-        self.toggle_list = np.where(np.logical_xor(closes, self.near_starts), self.toggle_list + 1, self.toggle_list)
+        self.toggle_list = np.where(np.logical_xor(closes, self.near_starts),
+                                    self.toggle_list + 1, self.toggle_list)
         self.near_starts = closes.copy()
         self.lap_counts = self.toggle_list // 2
-        self.lap_times = np.where(self.toggle_list < 4, self.current_time, self.lap_times)
+        self.lap_times = np.where(self.toggle_list < 4,
+                                  self.current_time,
+                                  self.lap_times)
 
         done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
         # print(self.collisions[self.ego_idx])
-        
+
         max_episode_time = 100
         if (self.collisions[self.ego_idx]):
             done = True
@@ -375,7 +405,7 @@ class F110Env(gym.Env):
         elif np.all(self.toggle_list >= 4):
             done = True
             # print('toggle list?')
-        elif self.current_time >= max_episode_time and self.lap_counts==0:
+        elif self.current_time >= max_episode_time and self.lap_counts == 0:
             done = True
             # print('time exceed')
         elif self.lap_counts == 3:
@@ -389,7 +419,7 @@ class F110Env(gym.Env):
     def _update_state(self, obs_dict):
         for key in ['poses_x', 'poses_y', 'poses_theta', 'collisions']:
             setattr(self, key, obs_dict[key])
-    
+
     def get_obs(self):
         return self.curr_obs
 
@@ -398,18 +428,19 @@ class F110Env(gym.Env):
             key: np.array(value, dtype=DTYPE)
             for key, value in obs.items()
         }
-        formatted_obs['ego_idx'] = np.array([obs['ego_idx']], dtype=np.int32)
-        formatted_obs['lap_counts'] = np.array(obs['lap_counts'], dtype=np.int32)
+        formatted_obs['ego_idx'] = np.array([obs['ego_idx']], np.int32)
+        formatted_obs['lap_counts'] = np.array(obs['lap_counts'], np.int32)
         return formatted_obs
 
     def _update_render_obs(self, obs):
         self.render_obs = {
-            key: obs[key] for key in ['ego_idx', 'poses_x', 'poses_y', 'poses_theta', 'lap_times', 'lap_counts']
+            key: obs[key] for key in ['ego_idx', 'poses_x',
+                                      'poses_y', 'poses_theta',
+                                      'lap_times', 'lap_counts']
         }
-        
+
     def _convert_obs_to_arrays(self, obs):
         return {key: np.array(value) for key, value in obs.items()}
-    
 
     def step(self, action):
         # call simulation step
@@ -424,15 +455,16 @@ class F110Env(gym.Env):
 
         # check done
         done, toggle_list = self._check_done()
-        
-        info = {'checkpoint_done': done, 'lap_count' : self.lap_counts, 'lap_times' : obs['lap_times']}
-        
+
+        info = {'checkpoint_done': done,
+                'lap_count': self.lap_counts,
+                'lap_times': obs['lap_times']}
+
         obs['scans'] = obs['scans'][0]
         obs = self._format_obs(obs)
         self.curr_obs = obs
         # self.render()
         return obs, 0, done, info
-
 
     def reset(self, poses=None):
         """
@@ -441,20 +473,22 @@ class F110Env(gym.Env):
 
         Returns:
             obs (dict): observation of the current step
-            reward (float, default=self.timestep): step reward, currently is physics timestep
+            reward (float, default=self.timestep): step reward
             done (bool): if the simulation is done
             info (dict): auxillary information dictionary
         """
         self._set_random_map()
-        
+
         if poses is None:
             # Generate random poses for the agents
             init_x = np.random.uniform(-0.3, 0.3)
             init_y = np.random.uniform(-0.3, 0.3)
-            init_angle = np.pi/2 + self.map_csv_data[1, 3] + np.random.uniform(-np.pi/12, np.pi/12)
-            # init_angle += np.pi/2
+            init_angle = (np.pi/2 +
+                          self.map_csv_data[1, 3] +
+                          np.random.uniform(-np.pi/12, np.pi/12))
+
             poses = np.array([[init_x, init_y, init_angle]])
-            
+
         # reset counters and data members
         self.current_time = 0.0
         self.collisions = np.zeros((self.num_agents, ))
@@ -467,7 +501,10 @@ class F110Env(gym.Env):
         self.start_xs = poses[:, 0]
         self.start_ys = poses[:, 1]
         self.start_thetas = poses[:, 2]
-        self.start_rot = np.array([[np.cos(-self.start_thetas[self.ego_idx]), -np.sin(-self.start_thetas[self.ego_idx])], [np.sin(-self.start_thetas[self.ego_idx]), np.cos(-self.start_thetas[self.ego_idx])]])
+        self.start_rot = np.array([[np.cos(-self.start_thetas[self.ego_idx]),
+                                    -np.sin(-self.start_thetas[self.ego_idx])],
+                                   [np.sin(-self.start_thetas[self.ego_idx]),
+                                    np.cos(-self.start_thetas[self.ego_idx])]])
 
         # call reset to simulator
         self.sim.reset(poses)
@@ -488,7 +525,8 @@ class F110Env(gym.Env):
 
         Args:
             params (dict): Dictionary of parameters.
-            index (int, default=-1): If >= 0 then only update a specific agent's params.
+            index (int, default=-1): If >= 0 then only
+                    update a specific agent's params.
         """
         self.sim.update_params(params, agent_idx=index)
 
@@ -497,18 +535,23 @@ class F110Env(gym.Env):
         Add an extra drawing function to call during rendering.
 
         Args:
-            callback_func (function (EnvRenderer) -> None): Custom function to be called during render().
+            callback_func (function (EnvRenderer) -> None): Custom function
+                            to be called during render().
         """
 
         F110Env.render_callbacks.append(callback_func)
 
     def render(self, mode='human'):
         """
-        Renders the environment with Pyglet. Use mouse scroll in the window to zoom in/out, use mouse click drag to pan. Shows the agents, the map, current FPS (bottom-left corner), and the race information as text.
+        Renders the environment with Pyglet. Use mouse scroll in the window to
+        zoom in/out, use mouse click drag to pan. Shows the agents, the map,
+        current FPS (bottom-left corner), and the race information as text.
 
         Args:
             mode (str, default='human'): Rendering mode, currently supports:
-                'human': Slowed down rendering such that the env is rendered in a way that sim time elapsed is close to real time elapsed.
+                'human': Slowed down rendering such that the env is
+                        rendered in a way that sim time elapsed is
+                        close to real time elapsed.
                 'human_fast': Render as fast as possible.
         """
         assert mode in ['human', 'human_fast']
@@ -517,7 +560,8 @@ class F110Env(gym.Env):
             # first call, initialize everything
             from f110_gym.envs.rendering import EnvRenderer
             F110Env.renderer = EnvRenderer(WINDOW_W, WINDOW_H)
-            F110Env.renderer.update_map(f"{self.map_dir}/maps/{self.map_name}", '.png')
+            png_dir = f"{self.map_dir}/maps/{self.map_name}"
+            F110Env.renderer.update_map(png_dir, '.png')
 
         F110Env.renderer.update_obs(self.render_obs)
 

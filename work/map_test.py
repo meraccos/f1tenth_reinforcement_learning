@@ -8,10 +8,9 @@ from utils import read_csv
 
 map_id = random.randint(1, 250)
 
-map_name = "/Users/meraj/workspace/f1tenth_gym/work/tracks"
-map_png = map_name + "/maps/map{}.png".format(map_id)
-map_csv = map_name + "/centerline/map{}.csv".format(map_id)
-map_yaml = map_name + "/maps/map{}.yaml".format(map_id)
+map_png = f"tracks/maps/map{map_id}.png"
+map_csv = f"tracks/centerline/map{map_id}.csv"
+map_yaml = f"tracks/maps/map{map_id}.yaml"
 
 image = mpimg.imread(map_png)
 map_data = np.array(read_csv(map_csv))
@@ -24,7 +23,6 @@ map_resolution = yaml_data["resolution"]
 
 map_x = (map_data[:, 1] - map_origin[0]) / map_resolution
 map_y = (map_data[:, 2] - map_origin[1]) / map_resolution
-
 
 flipped_image = np.flipud(image)
 plt.imshow(flipped_image)

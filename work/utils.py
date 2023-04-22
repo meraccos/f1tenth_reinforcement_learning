@@ -12,6 +12,7 @@ from copy import copy
 from sklearn.neighbors import KDTree
 
 NUM_BEAMS = 1080
+DTYPE = np.float32
 
 
 def create_env(maps=[0], seed=5):
@@ -28,10 +29,10 @@ def create_env(maps=[0], seed=5):
     env = NewReward(env)
     env = ReducedObs(env)
     env = NormalizeActionWrapper(env)
+
     env = Monitor(env)
     env = DummyVecEnv([lambda: env])
     env = VecNormalize(env, norm_reward=True, norm_obs=False)
-    # env = DummyVecEnv([lambda: env])
     return env
 
 
@@ -44,8 +45,8 @@ class NormalizeActionWrapper(gym.Wrapper):
             low=-1, high=1, shape=env.action_space.shape, dtype=np.float32
         )
 
-    def denormalize_action(self, normalized_action):
-        return self.low + (normalized_action + 1.0) * 0.5 * (self.high - self.low)
+    def denormalize_action(self, norm_action):
+        return self.low + (norm_action + 1.0) * 0.5 * (self.high - self.low)
 
     def step(self, action):
         denormalized_action = self.denormalize_action(action)
@@ -63,22 +64,22 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         self.observation_space = spaces.Dict(
             {
                 "ego_idx": spaces.Box(0, self.num_agents - 1, (1,), np.int32),
-                "scans": spaces.Box(0, 100, (NUM_BEAMS,), np.float32),
-                "poses_x": spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
-                "poses_y": spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
+                "scans": spaces.Box(0, 100, (NUM_BEAMS,), DTYPE),
+                "poses_x": spaces.Box(-1000, 1000, (self.num_agents,), DTYPE),
+                "poses_y": spaces.Box(-1000, 1000, (self.num_agents,), DTYPE),
                 "poses_theta": spaces.Box(
-                    -2 * np.pi, 2 * np.pi, (self.num_agents,), np.float32
+                    -2 * np.pi, 2 * np.pi, (self.num_agents,), DTYPE
                 ),
-                "linear_vels_x": spaces.Box(-10, 10, (self.num_agents,), np.float32),
-                "linear_vels_y": spaces.Box(-10, 10, (self.num_agents,), np.float32),
-                "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), np.float32),
-                "collisions": spaces.Box(0, 1, (self.num_agents,), np.float32),
-                "lap_times": spaces.Box(0, 1e6, (self.num_agents,), np.float32),
-                "lap_counts": spaces.Box(0, 9999, (self.num_agents,), np.int32),
-                "poses_s": spaces.Box(-1000, 1000, (1,), np.float32),
-                "poses_d": spaces.Box(-1000, 1000, (1,), np.float32),
-                "linear_vels_s": spaces.Box(-10, 10, (1,), np.float32),
-                "linear_vels_d": spaces.Box(-10, 10, (1,), np.float32),
+                "linear_vels_x": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+                "linear_vels_y": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+                "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+                "collisions": spaces.Box(0, 1, (self.num_agents,), DTYPE),
+                "lap_times": spaces.Box(0, 1e6, (self.num_agents,), DTYPE),
+                "lap_counts": spaces.Box(0, 999, (self.num_agents,), np.int32),
+                "poses_s": spaces.Box(-1000, 1000, (1,), DTYPE),
+                "poses_d": spaces.Box(-1000, 1000, (1,), DTYPE),
+                "linear_vels_s": spaces.Box(-10, 10, (1,), DTYPE),
+                "linear_vels_d": spaces.Box(-10, 10, (1,), DTYPE),
             }
         )
 
@@ -109,45 +110,22 @@ class ReducedObs(gym.ObservationWrapper):
 
         self.observation_space = spaces.Dict(
             {
-                "scans": spaces.Box(0, 100, (NUM_BEAMS,), np.float32),
-                "linear_vels_x": spaces.Box(-10, 10, (self.num_agents,), np.float32),
-                "linear_vels_y": spaces.Box(-10, 10, (self.num_agents,), np.float32),
-                "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), np.float32),
+                "scans": spaces.Box(0, 100, (NUM_BEAMS,), DTYPE),
+                "linear_vels_x": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+                "linear_vels_y": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+                "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
             }
         )
-        # self.means = []
-        # self.mins = []
-        # self.maxs = []
-        # self.stds = []
-        # self.counter = 0
 
     def observation(self, obs):
-        
         # Observation scaling trial
         obs["linear_vels_x"] = obs["linear_vels_x"] / 3.2
         obs["linear_vels_y"] = obs["linear_vels_y"] / 3.2
         obs["ang_vels_z"] /= 3.0
-        
-        obs["scans"] = np.sqrt(obs["scans"]+1.0) / 1.5 - 1.80
-        # obs["scans"] = np.sqrt(obs["scans"]+1.0) / 1.67 - 1.17
-        
-        # obs["scans"] /=0.4
 
-        # self.means.append(np.mean(obs["scans"]))
-        # self.mins.append(min(obs["scans"]))
-        # self.maxs.append(max(obs["scans"]))
-        # self.stds.append(np.std(obs["scans"]))
-        
-        
-        # if self.counter % 1000 == 0:
-        #     print(np.mean(self.means), np.std(self.means))
-        #     print(np.mean(self.mins), np.std(self.mins))
-        #     print(np.mean(self.maxs), np.std(self.maxs))
-        #     print(np.mean(self.stds), np.std(self.stds))
-        #     print()
-        
-        # self.counter +=1
-        
+        obs["scans"] = np.sqrt(obs["scans"] + 1.0) / 1.5 - 1.80
+        obs["scans"] = (obs["scans"] + 1.0) / 2.0
+
         del obs["poses_x"]
         del obs["poses_y"]
         # del obs["linear_vels_x"]
@@ -196,11 +174,11 @@ class TensorboardCallback(BaseCallback):
 
         if checkpoint_done:
             if env.collided:
-                print('collided')
+                print("collided")
             else:
-                print('not collided')
+                print("not collided")
             # Calculate the fraction
-            self.max_s_frac = copy(self.prev_s / self.max_s)
+            self.max_s_frac = float(copy(self.prev_s / self.max_s))
 
             if self.prev_lap_times <= 20.0 and self.max_s_frac > 0.5:
                 self.max_s_frac -= 1.0
@@ -209,9 +187,11 @@ class TensorboardCallback(BaseCallback):
 
             self.lap_countss[self.episode_index] = infos.get("lap_count", 0)
             self.collision_countss[self.episode_index] = int(env.collided)
+
             self.episode_index = (self.episode_index + 1) % 100
-            self.success_rate = np.mean(self.lap_countss >= 1)
-            self.collision_rate = np.mean(self.collision_countss == 1)
+
+            self.success_rate = float(np.mean(self.lap_countss >= 1))
+            self.collision_rate = float(np.mean(self.collision_countss == 1))
 
         self.prev_s = copy(env.poses_s)
         self.prev_lap_times = copy(env.lap_times)
@@ -223,9 +203,9 @@ class TensorboardCallback(BaseCallback):
             self.model.save(f"{self.save_path}_{self.num_timesteps}")
 
         # Log the track fraction
-        self.logger.record("rollout/track_fraction", float(self.max_s_frac))
-        self.logger.record("rollout/success_rate", float(self.success_rate))
-        self.logger.record("rollout/collision_rate", float(self.collision_rate))
+        self.logger.record("rollout/track_fraction", self.max_s_frac)
+        self.logger.record("rollout/success_rate", self.success_rate)
+        self.logger.record("rollout/collision_rate", self.collision_rate)
 
         return True
 
