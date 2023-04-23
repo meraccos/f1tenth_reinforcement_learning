@@ -2,13 +2,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from stable_baselines3 import PPO
 from utils import create_env
+import random
 
 maps = list(range(1, 250))
+random.seed(7)
 
-env = create_env(maps=maps)
+env = create_env(maps=maps, seed=5)
 env.training = False
 
-model = "/Users/meraj/workspace/f1tenth_gym/work/models/obs_normalized2_500000"
+model = "models/no_obstacles_3000000"
 
 model = PPO.load(path=model, env=env)
 
@@ -24,9 +26,11 @@ while not done:
     obs, reward, done, info = env.step(action)
 
     # Get the LiDAR data from obs
+    lidar_data = obs["scans"]
+    print(action[0])
     # lidar_data = np.log10(obs["scans"]+1)
     # lidar_data = np.sqrt(obs["scans"])
-    lidar_data = obs["scans"] = np.sqrt(obs["scans"]+1.0) / 1.5 
+    # lidar_data = obs["scans"] = np.sqrt(obs["scans"]+1.0) / 1.5 
 
     # Convert LiDAR data to polar coordinates
     num_angles = lidar_data.size
