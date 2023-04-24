@@ -6,6 +6,7 @@ import gym
 class NewReward(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
+        # self.current_s
 
     def reward(self, obs):
         new_obs = copy(obs)
@@ -48,5 +49,6 @@ class NewReward(gym.Wrapper):
 
     def step(self, action):
         obs, _, done, info = copy(self.env.step(action))
+        info['poses_s'] = obs['poses_s']
         new_reward = copy(self.reward(obs))
         return obs, new_reward.item(), done, info

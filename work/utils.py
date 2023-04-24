@@ -161,62 +161,48 @@ class TensorboardCallback(BaseCallback):
 
         self.save_interval = save_interval
         self.save_path = save_path
-        self.prev_s = 0.0
-        self.prev_lap_times = 0.0
-        self.max_s_frac = 0.0
-        self.max_s = 100.0
 
-        self.lap_countss = np.zeros(100, int)
-        self.collision_countss = np.ones(100, int)
-        self.frac_countss = np.zeros(100, float)
+        self.lap_count_log = np.zeros(100, int)
+        self.collision_log = np.ones(100, int)
+        self.sfraction_log = np.zeros(100, float)
 
         self.episode_index = 0
 
         self.success_rate = 0.0
         self.collision_rate = 1.0
-        self.frac_rate = 0.0
+        self.sfraction_rate = 0.0
 
     def _on_step(self) -> bool:
         vec_env = self.locals.get("env")
         env = copy(vec_env.get_attr("env")[0])
 
         infos = copy(self.locals.get("infos", [{}])[0])
-        checkpoint_done = infos.get("checkpoint_done", False)
 
-        if checkpoint_done:
-            if env.collided:
-                print("collided")
+        if infos['checkpoint_done']:
+            # Calculate the max fraction of the track the car has gone
+            s_frac = float(copy(infos['poses_s'] / infos['max_s']))
+
+            if infos['lap_time'] <= 20.0 and s_frac > 0.5:
+                s_frac -= 1.0
             else:
-                print("not collided")
-            # Calculate the fraction
-            self.max_s_frac = float(copy(self.prev_s / self.max_s))
+                s_frac += float(infos['lap_count'])
 
-            if self.prev_lap_times <= 20.0 and self.max_s_frac > 0.5:
-                self.max_s_frac -= 1.0
-            else:
-                self.max_s_frac += float(self.prev_lap_counts)
-
-            self.lap_countss[self.episode_index] = infos.get("lap_count", 0)
-            self.collision_countss[self.episode_index] = int(env.collided)
-            self.frac_countss[self.episode_index] = self.max_s_frac
+            self.lap_count_log[self.episode_index] = infos["lap_count"]
+            self.collision_log[self.episode_index] = int(env.collided)
+            self.sfraction_log[self.episode_index] = s_frac
 
             self.episode_index = (self.episode_index + 1) % 100
 
-            self.success_rate = float(np.mean(self.lap_countss >= 1))
-            self.collision_rate = float(np.mean(self.collision_countss == 1))
-            self.frac_rate = float(np.mean(self.frac_countss) != 0)
-
-        self.prev_s = copy(env.poses_s)
-        self.prev_lap_times = copy(env.lap_times)
-        self.prev_lap_counts = copy(env.lap_counts)
-        self.max_s = copy(env.map_max_s)
+            self.success_rate = float(np.mean(self.lap_count_log >= 1))
+            self.collision_rate = float(np.mean(self.collision_log == 1))
+            self.sfraction_rate = float(np.mean(self.sfraction_log) != 0)
 
         # Save the model
         if self.num_timesteps % self.save_interval == 0:
-            self.model.save(f"{self.save_path}_{self.num_timesteps}")
+            self.model.save(f"{self.save_path}_{self.num_timesteps / 1000}")
 
         # Log the track fraction
-        self.logger.record("rollout/track_fraction", self.frac_rate)
+        self.logger.record("rollout/track_fraction", self.sfraction_rate)
         self.logger.record("rollout/success_rate", self.success_rate)
         self.logger.record("rollout/collision_rate", self.collision_rate)
 

@@ -31,6 +31,7 @@ from f110_gym.envs.base_classes import Integrator, Simulator
 
 import gym
 from gym import spaces
+from copy import copy
 
 # Constants
 VIDEO_W = 600
@@ -147,7 +148,7 @@ class F110Env(gym.Env):
         # stateful observations for rendering
         self.render_obs = None
         
-        # self.current_action = None
+        self.step_count = 0
         
         self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float32)
         
@@ -367,26 +368,12 @@ class F110Env(gym.Env):
         poses_y = np.array(self.poses_y)-self.start_ys
         delta_pt = np.dot(self.start_rot, np.stack((poses_x, poses_y), axis=0))
         temp_y = delta_pt[1, :]
-        # idx1 = temp_y > left_t
-        # idx2 = temp_y < -right_t
-        # temp_y[idx1] -= left_t
-        # temp_y[idx2] = -right_t - temp_y[idx2]
-        # temp_y[np.invert(np.logical_or(idx1, idx2))] = 0
         temp_y = np.where(temp_y > left_t, temp_y - left_t,
                           np.where(temp_y < -right_t, -right_t - temp_y, 0))
 
         dist2 = delta_pt[0, :]**2 + temp_y**2
         closes = dist2 <= 0.1
-        # for i in range(self.num_agents):
-        #     if closes[i] and not self.near_starts[i]:
-        #         self.near_starts[i] = True
-        #         self.toggle_list[i] += 1
-        #     elif not closes[i] and self.near_starts[i]:
-        #         self.near_starts[i] = False
-        #         self.toggle_list[i] += 1
-        #     self.lap_counts[i] = self.toggle_list[i] // 2
-        #     if self.toggle_list[i] < 4:
-        #         self.lap_times[i] = self.current_time
+
         self.toggle_list = np.where(np.logical_xor(closes, self.near_starts),
                                     self.toggle_list + 1, self.toggle_list)
         self.near_starts = closes.copy()
@@ -457,13 +444,16 @@ class F110Env(gym.Env):
         done, toggle_list = self._check_done()
 
         info = {'checkpoint_done': done,
-                'lap_count': self.lap_counts,
-                'lap_times': obs['lap_times']}
+                'step_count': self.step_count,
+                'max_s': self.map_max_s,
+                'lap_count': obs['lap_counts'],
+                'lap_time': obs['lap_times']}
 
         obs['scans'] = obs['scans'][0]
         obs = self._format_obs(obs)
+        
         self.curr_obs = obs
-        # self.render()
+        self.step_count = copy(self.step_count) + 1
         return obs, 0, done, info
 
     def reset(self, poses=None):
@@ -491,6 +481,7 @@ class F110Env(gym.Env):
 
         # reset counters and data members
         self.current_time = 0.0
+        self.step_count = 0
         self.collisions = np.zeros((self.num_agents, ))
         self.num_toggles = 0
         self.near_start = True
