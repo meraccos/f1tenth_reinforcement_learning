@@ -14,7 +14,7 @@ def linear_schedule(initial_learning_rate: float):
 
 if __name__ == "__main__":
     save_interval = 100_000
-    log_name = "obstacle_v_newaction2_b2048_s3"
+    log_name = "boxbound_b2048"
 
     save_path = f"./models/{log_name}"
     log_dir = "./metrics/"
@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     random.seed(8)
 
-    initial_learning_rate = 0.0001
+    initial_learning_rate = 0.0003
     lr_schedule = linear_schedule(initial_learning_rate)
 
     env = create_env(maps=maps, seed=8)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     combined_callback = TensorboardCallback(save_interval, save_path, verbose=1)
     model.learn(
-        total_timesteps=10000_000,
+        total_timesteps=4000_000,
         callback=combined_callback,
         progress_bar=True,
         tb_log_name=log_name,

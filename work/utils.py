@@ -36,50 +36,9 @@ def create_env(maps=[0], seed=5):
     env = VecNormalize(env, norm_reward=True, norm_obs=False)
 
     # num_stack = 3
-    env = VecFrameStack(env, 3)
+    # env = VecFrameStack(env, 3)
     return env
 
-
-# Between -1 and 1
-# class NormalizeActionWrapper(gym.Wrapper):
-#     def __init__(self, env):
-#         super().__init__(env)
-#         self.low = env.action_space.low
-#         self.high = env.action_space.high
-#         self.action_space = gym.spaces.Box(
-#             low=-1, high=1, shape=env.action_space.shape, dtype=np.float32
-#         )
-
-#     def denormalize_action(self, norm_action):
-#         return self.low + (norm_action + 1.0) * 0.5 * (self.high - self.low)
-
-#     def step(self, action):
-#         denormalized_action = self.denormalize_action(action)
-#         next_state, reward, done, info = self.env.step(denormalized_action)
-#         return next_state, reward, done, info
-    
-# Between 0 and 1
-# class NormalizeActionWrapper(gym.Wrapper):
-#     def __init__(self, env):
-#         super().__init__(env)
-#         self.low = env.action_space.low
-#         self.high = env.action_space.high
-#         self.action_space = gym.spaces.Box(
-#             low=0, high=1, shape=env.action_space.shape, dtype=np.float32
-#         )
-
-#     def denormalize_action(self, norm_action):
-#         # return self.low + (norm_action + 1.0) * 0.5 * (self.high - self.low)
-#         return self.low + norm_action * (self.high - self.low)
-
-#     def step(self, action):
-#         denormalized_action = self.denormalize_action(action)
-#         # print(denormalized_action)
-#         next_state, reward, done, info = self.env.step(denormalized_action)
-#         return next_state, reward, done, info
-
-
-# self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float32)
 
 # Steering -1 and +1, vel 0 and +1
 class NormalizeActionWrapper(gym.Wrapper):
@@ -87,19 +46,13 @@ class NormalizeActionWrapper(gym.Wrapper):
         super().__init__(env)
         self.low = env.action_space.low
         self.high = env.action_space.high
-        # self.action_space = gym.spaces.Box(
-        #     low=0, high=1, shape=env.action_space.shape, dtype=np.float32
-        # )
         self.action_space = gym.spaces.Box(np.array([-1.0, 0.0]), np.array([1.0, 1.0]), dtype=np.float32)
 
     def denormalize_action(self, norm_action):
-        # print(norm_action)
         act_steer = self.low[0] + (norm_action[0] + 1.0) * 0.5 * (self.high[0] - self.low[0])
         act_vel = self.low[1] + norm_action[1] * (self.high[1] - self.low[1])
-        # return self.low + (norm_action + 1.0) * 0.5 * (self.high - self.low)
+
         act = np.array([act_steer, act_vel])
-        # print(act)
-        # print()
         return act
 
     def step(self, action):
@@ -164,11 +117,9 @@ class ReducedObs(gym.ObservationWrapper):
 
         self.observation_space = spaces.Dict(
             {
-                "scans": spaces.Box(0, 20, (NUM_BEAMS,), DTYPE),
-                # "linear_vels_x": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
-                # "linear_vels_y": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+                "scans": spaces.Box(0, 1.5, (NUM_BEAMS,), DTYPE),
                 "linear_vel": spaces.Box(0, 1, (self.num_agents,), DTYPE),
-                "ang_vels_z": spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+                "ang_vels_z": spaces.Box(-2, 2, (self.num_agents,), DTYPE),
             }
         )
 
@@ -182,21 +133,18 @@ class ReducedObs(gym.ObservationWrapper):
         obs["scans"] = (obs["scans"] + 1.0) / 2.0
 
         # Reverse the scan observation
-        # obs["scans"] = obs["scans"][::-1]
+        obs["scans"] = obs["scans"][::-1]
 
-        # Introduce vel mag input
+        # Introduce velocity magnitude as observation
         obs["linear_vel"] = np.sqrt(obs["linear_vels_x"]**2 + obs["linear_vels_y"]**2)
 
         del obs["poses_x"]
         del obs["poses_y"]
-        # del obs["linear_vels_x"]
-        # del obs["linear_vels_y"]
 
         del obs["ego_idx"]
         del obs["collisions"]
         del obs["lap_times"]
         del obs["lap_counts"]
-        # del obs["ang_vels_z"]
         del obs["poses_theta"]
 
         del obs["poses_s"]
@@ -220,11 +168,13 @@ class TensorboardCallback(BaseCallback):
 
         self.lap_countss = np.zeros(100, int)
         self.collision_countss = np.ones(100, int)
+        self.frac_countss = np.zeros(100, float)
 
         self.episode_index = 0
 
         self.success_rate = 0.0
         self.collision_rate = 1.0
+        self.frac_rate = 0.0
 
     def _on_step(self) -> bool:
         vec_env = self.locals.get("env")
@@ -248,11 +198,13 @@ class TensorboardCallback(BaseCallback):
 
             self.lap_countss[self.episode_index] = infos.get("lap_count", 0)
             self.collision_countss[self.episode_index] = int(env.collided)
+            self.frac_countss[self.episode_index] = self.max_s_frac
 
             self.episode_index = (self.episode_index + 1) % 100
 
             self.success_rate = float(np.mean(self.lap_countss >= 1))
             self.collision_rate = float(np.mean(self.collision_countss == 1))
+            self.frac_rate = float(np.mean(self.frac_countss) != 0)
 
         self.prev_s = copy(env.poses_s)
         self.prev_lap_times = copy(env.lap_times)
@@ -264,7 +216,7 @@ class TensorboardCallback(BaseCallback):
             self.model.save(f"{self.save_path}_{self.num_timesteps}")
 
         # Log the track fraction
-        self.logger.record("rollout/track_fraction", self.max_s_frac)
+        self.logger.record("rollout/track_fraction", self.frac_rate)
         self.logger.record("rollout/success_rate", self.success_rate)
         self.logger.record("rollout/collision_rate", self.collision_rate)
 
