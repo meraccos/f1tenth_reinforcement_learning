@@ -149,6 +149,7 @@ class F110Env(gym.Env):
         self.render_obs = None
         
         self.step_count = 0
+        self.prev_was_one_lap = False
         
         self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float32)
         
@@ -397,10 +398,17 @@ class F110Env(gym.Env):
             # print('time exceed')
         elif self.lap_counts == 3:
             done = True
+            self.prev_was_one_lap = True
+            print('lap done')
             # print('3 laps done')
         else:
             done = False
-
+        
+        if self.prev_was_one_lap:
+            print('got it, resetting!')
+            self.prev_was_one_lap = False
+            done = True
+            
         return bool(done), self.toggle_list >= 4
 
     def _update_state(self, obs_dict):
@@ -449,9 +457,10 @@ class F110Env(gym.Env):
                 'lap_count': obs['lap_counts'],
                 'lap_time': obs['lap_times']}
 
-        obs['scans'] = obs['scans'][0]
+        # Reverse the lidar data
+        obs['scans'] = obs['scans'][0][::-1]
         obs = self._format_obs(obs)
-        
+
         self.curr_obs = obs
         self.step_count = copy(self.step_count) + 1
         return obs, 0, done, info

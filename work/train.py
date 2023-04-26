@@ -39,7 +39,7 @@ if __name__ == "__main__":
         # vf_coef=0.5,
         # max_grad_norm=0.5,
         # gae_lambda=0.95,
-        # gamma=0.9151909702089307,
+        gamma=0.99,
         # n_epochs=10,
         # clip_range=0.14766513397642733,  # Adjust this value as needed
         tensorboard_log=log_dir,
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     combined_callback = TensorboardCallback(save_interval, save_path, verbose=1)
     model.learn(
-        total_timesteps=4000_000,
+        total_timesteps=10000_000,
         callback=combined_callback,
         progress_bar=True,
         tb_log_name=log_name,

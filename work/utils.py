@@ -117,9 +117,9 @@ class ReducedObs(gym.ObservationWrapper):
 
         self.observation_space = spaces.Dict(
             {
-                "scans": spaces.Box(0, 1.5, (NUM_BEAMS,), DTYPE),
+                "scans": spaces.Box(0, 1.2, (NUM_BEAMS,), DTYPE),
                 "linear_vel": spaces.Box(0, 1, (self.num_agents,), DTYPE),
-                "ang_vels_z": spaces.Box(-2, 2, (self.num_agents,), DTYPE),
+                "ang_vels_z": spaces.Box(-1.2, 1.2, (self.num_agents,), DTYPE),
             }
         )
 
@@ -129,14 +129,10 @@ class ReducedObs(gym.ObservationWrapper):
         obs["linear_vels_y"] = obs["linear_vels_y"] / 3.2
         obs["ang_vels_z"] /= 3.0
 
-        obs["scans"] = np.sqrt(obs["scans"] + 1.0) / 1.5 - 1.80
-        obs["scans"] = (obs["scans"] + 1.0) / 2.0
-
-        # Reverse the scan observation
-        obs["scans"] = obs["scans"][::-1]
+        obs["scans"] = np.sqrt(obs["scans"] + 1.0) / 3.0 - 0.40
 
         # Introduce velocity magnitude as observation
-        obs["linear_vel"] = np.sqrt(obs["linear_vels_x"]**2 + obs["linear_vels_y"]**2)
+        obs["linear_vel"] = (obs["linear_vels_x"]**2 + obs["linear_vels_x"]**2) ** 0.5
 
         del obs["poses_x"]
         del obs["poses_y"]
@@ -173,38 +169,35 @@ class TensorboardCallback(BaseCallback):
         self.sfraction_rate = 0.0
 
     def _on_step(self) -> bool:
-        vec_env = self.locals.get("env")
-        env = copy(vec_env.get_attr("env")[0])
-
         infos = copy(self.locals.get("infos", [{}])[0])
 
         if infos['checkpoint_done']:
-            # Calculate the max fraction of the track the car has gone
-            s_frac = float(copy(infos['poses_s'] / infos['max_s']))
+            # Calculate the max fraction of the track covered
+            s_frac = copy(infos['poses_s'] / infos['max_s'])
 
             if infos['lap_time'] <= 20.0 and s_frac > 0.5:
                 s_frac -= 1.0
             else:
-                s_frac += float(infos['lap_count'])
+                s_frac += infos['lap_count']
 
             self.lap_count_log[self.episode_index] = infos["lap_count"]
-            self.collision_log[self.episode_index] = int(env.collided)
+            self.collision_log[self.episode_index] = infos['collision']
             self.sfraction_log[self.episode_index] = s_frac
 
             self.episode_index = (self.episode_index + 1) % 100
 
-            self.success_rate = float(np.mean(self.lap_count_log >= 1))
-            self.collision_rate = float(np.mean(self.collision_log == 1))
-            self.sfraction_rate = float(np.mean(self.sfraction_log) != 0)
+            self.success_rate = np.mean(self.lap_count_log >= 1)
+            self.collision_rate = np.mean(self.collision_log)
+            self.sfraction_rate = np.mean(self.sfraction_log)
 
         # Save the model
         if self.num_timesteps % self.save_interval == 0:
-            self.model.save(f"{self.save_path}_{self.num_timesteps / 1000}")
+            self.model.save(f"{self.save_path}_{int(self.num_timesteps / 1000)}k")
 
         # Log the track fraction
-        self.logger.record("rollout/track_fraction", self.sfraction_rate)
-        self.logger.record("rollout/success_rate", self.success_rate)
-        self.logger.record("rollout/collision_rate", self.collision_rate)
+        self.logger.record("rollout/track_fraction", float(self.sfraction_rate))
+        self.logger.record("rollout/success_rate", float(self.success_rate))
+        self.logger.record("rollout/collision_rate", float(self.collision_rate))
 
         return True
 

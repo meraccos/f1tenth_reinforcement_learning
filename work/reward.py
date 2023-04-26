@@ -6,7 +6,6 @@ import gym
 class NewReward(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        # self.current_s
 
     def reward(self, obs):
         new_obs = copy(obs)
@@ -15,10 +14,9 @@ class NewReward(gym.Wrapper):
         w = new_obs["ang_vels_z"]
         d = new_obs["poses_d"]
 
-        reward = 0
+        reward = 0.01
 
-        vel_mag = np.sqrt(vs**2 + vd**2)
-        if vel_mag <= 0.25:
+        if (vs**2 + vd**2) ** 0.5 <= 0.25:
             reward -= 2.0
 
         # Encourage the agent to move in the vs direction
@@ -28,10 +26,6 @@ class NewReward(gym.Wrapper):
         # Penalize the agent for collisions
         if self.env.collisions[0]:
             reward -= 2000.0
-            self.collided = True
-        else:
-            reward += 0.01
-            self.collided = False
 
         # Minimize d (encourage the agent to stay near the center of the track)
         reward -= 0.05 * abs(d)
@@ -50,5 +44,6 @@ class NewReward(gym.Wrapper):
     def step(self, action):
         obs, _, done, info = copy(self.env.step(action))
         info['poses_s'] = obs['poses_s']
+        info['collision'] = self.env.collisions[0]
         new_reward = copy(self.reward(obs))
         return obs, new_reward.item(), done, info
