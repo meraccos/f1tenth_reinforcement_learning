@@ -1,20 +1,18 @@
 import random
 
 from stable_baselines3 import PPO
-from utils import TensorboardCallback, create_env
+from stable_baselines3.common.callbacks import CallbackList
+from utils import create_env, linear_schedule
+from callbacks import TensorboardCallback, CustomEvalCallback
 
 
 # Define the custom learning rate schedule function
-def linear_schedule(initial_learning_rate: float):
-    def schedule(progress_remaining: float):
-        return initial_learning_rate * progress_remaining
-
-    return schedule
-
 
 if __name__ == "__main__":
     save_interval = 100_000
-    log_name = "boxbound_b2048"
+    eva_freq = 500
+    n_eval_episodes = 1
+    log_name = "two_cbs"
 
     save_path = f"./models/{log_name}"
     log_dir = "./metrics/"
@@ -26,6 +24,7 @@ if __name__ == "__main__":
     lr_schedule = linear_schedule(initial_learning_rate)
 
     env = create_env(maps=maps, seed=8)
+    eval_env = create_env(maps=maps, seed=8)
 
     model = PPO(
         "MultiInputPolicy",
@@ -45,11 +44,17 @@ if __name__ == "__main__":
         tensorboard_log=log_dir,
         device="cpu",
     )
-
-    combined_callback = TensorboardCallback(save_interval, save_path, verbose=1)
+    
+    callbacks = CallbackList([TensorboardCallback(save_interval, save_path), 
+                              CustomEvalCallback(eval_env,
+                                                best_model_save_path="./best_models/",
+                                                log_path=log_dir,
+                                                n_eval_episodes=n_eval_episodes,
+                                                eval_freq=eva_freq)])
+    
     model.learn(
         total_timesteps=10000_000,
-        callback=combined_callback,
+        callback=callbacks,
         progress_bar=True,
         tb_log_name=log_name,
     )

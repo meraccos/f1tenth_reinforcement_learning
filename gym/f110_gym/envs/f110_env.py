@@ -38,7 +38,7 @@ VIDEO_W = 600
 VIDEO_H = 400
 WINDOW_W = 1000
 WINDOW_H = 800
-DTYPE = np.float32
+DTYPE = np.float64
 
 
 class F110Env(gym.Env):
@@ -151,19 +151,19 @@ class F110Env(gym.Env):
         self.step_count = 0
         self.prev_was_one_lap = False
         
-        self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float32)
+        self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float64)
         
         self.observation_space = spaces.Dict({
             'ego_idx': spaces.Box(0, self.num_agents - 1, (1,), np.int32),
-            'scans': spaces.Box(0, 100, (self.num_beams, ), np.float32),
-            'poses_x': spaces.Box(-1000, 1000, (self.num_agents,), np.float32),
-            'poses_y': spaces.Box(-1000, 1000, (self.num_agents,), np.float32), 
-            'poses_theta': spaces.Box(-2*np.pi, 2*np.pi, (self.num_agents,),np.float32),
-            'linear_vels_x': spaces.Box(-10, 10, (self.num_agents,), np.float32),
-            'linear_vels_y': spaces.Box(-10, 10, (self.num_agents,), np.float32),
-            'ang_vels_z': spaces.Box(-10, 10, (self.num_agents,), np.float32),
-            'collisions': spaces.Box(0, 1, (self.num_agents,), np.float32),
-            'lap_times': spaces.Box(0, 1e6, (self.num_agents,), np.float32),
+            'scans': spaces.Box(0, 100, (self.num_beams, ), DTYPE),
+            'poses_x': spaces.Box(-1000, 1000, (self.num_agents,), DTYPE),
+            'poses_y': spaces.Box(-1000, 1000, (self.num_agents,), DTYPE),
+            'poses_theta': spaces.Box(-2*np.pi, 2*np.pi, (self.num_agents,),DTYPE),
+            'linear_vels_x': spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+            'linear_vels_y': spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+            'ang_vels_z': spaces.Box(-10, 10, (self.num_agents,), DTYPE),
+            'collisions': spaces.Box(0, 1, (self.num_agents,), DTYPE),
+            'lap_times': spaces.Box(0, 1e6, (self.num_agents,), DTYPE),
             'lap_counts': spaces.Box(0, 9999, (self.num_agents,), np.int32)
         })
 
