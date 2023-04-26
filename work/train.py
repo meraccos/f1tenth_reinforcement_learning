@@ -10,8 +10,8 @@ from callbacks import TensorboardCallback, CustomEvalCallback
 
 if __name__ == "__main__":
     save_interval = 100_000
-    eva_freq = 500
-    n_eval_episodes = 1
+    eva_freq = 50000
+    n_eval_episodes = 10
     log_name = "two_cbs"
 
     save_path = f"./models/{log_name}"

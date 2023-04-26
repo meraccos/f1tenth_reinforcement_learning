@@ -169,6 +169,7 @@ class ReducedObsWrapper(gym.ObservationWrapper):
 
         return obs
     
+    
 def get_closest_point_index(x, y, kdtree):
     _, indices = kdtree.query(np.array([[x, y]]), k=1)
     closest_point_index = indices[0, 0]

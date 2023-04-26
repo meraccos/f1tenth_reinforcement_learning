@@ -1,19 +1,55 @@
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.callbacks import EventCallback
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
+from typing import Any, Dict, Optional, Union
+from copy import copy
+
 import os
 import warnings
-from typing import Any, Dict, Optional, Union
-
 import gym
 import numpy as np
 
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
 
+class TensorboardCallback(BaseCallback):
+    def __init__(self, save_interval, save_path, verbose=1):
+        super().__init__(verbose)
 
-from copy import copy
+        self.save_interval = save_interval
+        self.save_path = save_path
 
+        self.lap_count_log = np.zeros(100, int)
+        self.collision_log = np.ones(100, int)
 
+        self.episode_index = 0
+
+        self.success_rate = 0.0
+        self.collision_rate = 1.0
+
+    def _on_step(self) -> bool:
+        super()._on_step()
+        infos = copy(self.locals.get("infos", [{}])[0])
+
+        if infos['checkpoint_done']:
+
+            self.lap_count_log[self.episode_index] = infos["lap_count"]
+            self.collision_log[self.episode_index] = infos['collision']
+
+            self.episode_index = (self.episode_index + 1) % 100
+
+            self.success_rate = np.mean(self.lap_count_log >= 1)
+            self.collision_rate = np.mean(self.collision_log)
+
+        # Save the model
+        if self.num_timesteps % self.save_interval == 0:
+            self.model.save(f"{self.save_path}_{int(self.num_timesteps / 1000)}k")
+
+        self.logger.record("rollout/success_rate", 
+                           float(self.success_rate))
+        self.logger.record("rollout/collision_rate", 
+                           float(self.collision_rate))
+
+        return True
 
 
 class CustomEvalCallback(EventCallback):
@@ -216,66 +252,3 @@ class CustomEvalCallback(EventCallback):
         """
         if self.callback:
             self.callback.update_locals(locals_)
-
-
-class TensorboardCallback(BaseCallback):
-    def __init__(self, save_interval, save_path, verbose=1):
-        super().__init__(verbose)
-
-        self.save_interval = save_interval
-        self.save_path = save_path
-
-        self.lap_count_log = np.zeros(100, int)
-        self.collision_log = np.ones(100, int)
-        self.sfraction_log = np.zeros(100, float)
-
-        self.episode_index = 0
-
-        self.success_rate = 0.0
-        self.collision_rate = 1.0
-        self.sfraction_rate = 0.0
-
-    def _on_step(self) -> bool:
-        super()._on_step()
-        infos = copy(self.locals.get("infos", [{}])[0])
-
-        if infos['checkpoint_done']:
-            # Calculate the max fraction of the track covered
-            s_frac = copy(infos['poses_s'] / infos['max_s'])
-
-            if infos['lap_time'] <= 20.0 and s_frac > 0.5:
-                s_frac -= 1.0
-            else:
-                s_frac += infos['lap_count']
-
-            self.lap_count_log[self.episode_index] = infos["lap_count"]
-            self.collision_log[self.episode_index] = infos['collision']
-            self.sfraction_log[self.episode_index] = s_frac
-
-            self.episode_index = (self.episode_index + 1) % 100
-
-            self.success_rate = np.mean(self.lap_count_log >= 1)
-            self.collision_rate = np.mean(self.collision_log)
-            self.sfraction_rate = np.mean(self.sfraction_log)
-
-        # Save the model
-        if self.num_timesteps % self.save_interval == 0:
-            self.model.save(f"{self.save_path}_{int(self.num_timesteps / 1000)}k")
-
-        # Log the track fraction
-        self.logger.record("rollout/track_fraction", 
-                           float(self.sfraction_rate))
-        self.logger.record("rollout/success_rate", 
-                           float(self.success_rate))
-        self.logger.record("rollout/collision_rate", 
-                           float(self.collision_rate))
-
-        return True
-    
-    def _on_training_start(self) -> None:
-        super()._on_training_start()
-        self.training = True
-
-    def _on_training_end(self) -> None:
-        super()._on_training_end()
-        self.training = False
