@@ -9,6 +9,7 @@ from sklearn.neighbors import KDTree
 NUM_BEAMS = 1080
 DTYPE = np.float64
 
+
 class RewardWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -83,7 +84,7 @@ class FrenetObsWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super(FrenetObsWrapper, self).__init__(env)
 
-        self.map_data = copy(env.map_csv_data)
+        self.map_data = copy(env.map_data.to_numpy())
         self.kdtree = KDTree(self.map_data[:, 1:3])
 
         self.observation_space = spaces.Dict(

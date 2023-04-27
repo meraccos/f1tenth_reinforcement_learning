@@ -5,6 +5,7 @@ monitor.csv
 *.yaml
 *.png
 *.pgm
+*.npz
 
 build/
 gym/f110_gym.egg-info

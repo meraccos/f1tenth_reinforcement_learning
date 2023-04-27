@@ -182,10 +182,10 @@ def create_track():
 
 def save_custom_format_csv(xy_pixels, file_name, WIDTH):
     with open(file_name, "w", newline="") as csvfile:
-        csv_writer = csv.writer(csvfile, delimiter=";")
+        csv_writer = csv.writer(csvfile, delimiter=",")
         csv_writer.writerow(
             [
-                "# s_m",
+                "s_m",
                 "x_m",
                 "y_m",
                 "psi_rad",
@@ -298,7 +298,7 @@ def convert_track(track, track_int, track_ext, iter, width):
     yaml.write("image: map" + str(iter) + ".pgm\n")
     yaml.write("resolution: 0.062500\n")
     yaml.write(
-        "origin: [" + str(map_origin_x) + "," + str(map_origin_y) + "]\n"
+        "origin: [" + str(map_origin_x) + "," + str(map_origin_y) + ", 0.000000]\n"
     )
     yaml.write("negate: 0\noccupied_thresh: 0.45\nfree_thresh: 0.196")
     yaml.close()
@@ -311,11 +311,13 @@ def convert_track(track, track_int, track_ext, iter, width):
 
 if __name__ == "__main__":
     map_idx = 0
-    for i in range(NUM_MAPS):
+    num_maps = 0
+    while num_maps <= NUM_MAPS:
         try:
             track, track_int, track_ext, width = create_track()
             map_idx += 1
             convert_track(track, track_int, track_ext, map_idx, width)
-        except ValueError():
+            num_maps += 1
+        except:
             print("Random generator failed, retrying")
             continue

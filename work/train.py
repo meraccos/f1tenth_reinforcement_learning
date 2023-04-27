@@ -16,12 +16,13 @@ if __name__ == "__main__":
 
     save_path = f"./models/{log_name}"
     log_dir = "./metrics/"
-    maps = list(range(1, 450))
+    # maps = list(range(1, 450))
+    maps = [4]
 
     random.seed(8)
 
-    initial_learning_rate = 0.0003
-    lr_schedule = linear_schedule(initial_learning_rate)
+    # initial_learning_rate = 0.0003
+    # lr_schedule = linear_schedule(initial_learning_rate)
 
     env = create_env(maps=maps, seed=8)
     eval_env = create_env(maps=maps, seed=8)
@@ -43,6 +44,7 @@ if __name__ == "__main__":
         # clip_range=0.14766513397642733,  # Adjust this value as needed
         tensorboard_log=log_dir,
         device="cpu",
+        stats_window_size=2
     )
     
     callbacks = CallbackList([TensorboardCallback(save_interval, save_path), 
@@ -57,6 +59,7 @@ if __name__ == "__main__":
         callback=callbacks,
         progress_bar=True,
         tb_log_name=log_name,
+        
     )
 
     env.close()

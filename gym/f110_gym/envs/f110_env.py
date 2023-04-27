@@ -28,6 +28,7 @@ import cv2
 import numpy as np
 import yaml
 from f110_gym.envs.base_classes import Integrator, Simulator
+from stable_baselines3.common.logger import read_csv
 
 import gym
 from gym import spaces
@@ -148,7 +149,6 @@ class F110Env(gym.Env):
         # stateful observations for rendering
         self.render_obs = None
         
-        self.step_count = 0
         self.prev_was_one_lap = False
         
         self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float64)
@@ -267,11 +267,14 @@ class F110Env(gym.Env):
         # Save the edited image
         file_name, file_extension = os.path.splitext(image_path)
         output_image_path = file_name + "_obs" + file_extension
+        
         self.map_name = self.map_name + "_obs"
+        self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
+        
         cv2.imwrite(output_image_path, image)
 
     def add_obstacles(self):
-        s_data = self.map_csv_data[:, 0]
+        s_data = self.map_data["s_m"].to_numpy()
         num_obstacles = random.randint(3, 20)
         ds = self.map_max_s / num_obstacles
         obs_data = []
@@ -279,11 +282,11 @@ class F110Env(gym.Env):
         for i in range(1, num_obstacles):
             target = i * ds
             closest_index = self.find_closest_index(s_data, target)
-            width = self.map_width[closest_index]
+            width = self.map_width
 
             obs_size = width / random.uniform(1.0, 4.0)
-            obs_x = self.map_csv_data[closest_index, 1]
-            obs_y = self.map_csv_data[closest_index, 2]
+            obs_x = self.map_data["x_m"].iloc[closest_index]
+            obs_y = self.map_data["y_m"].iloc[closest_index]
 
             random_disp = random.uniform(0, width)
             random_angle = random.uniform(0, 2*np.pi)
@@ -302,34 +305,27 @@ class F110Env(gym.Env):
         self.add_random_shapes(image_path=self.map_png, coordinates_list=obs_data)
 
     def _set_random_map(self):
-        self.map_idx = random.randint(0, len(self.maps) - 1)
+        self.map_idx = random.choice(self.maps)
         self.map_dir = '/Users/meraj/workspace/f1tenth_gym/work/tracks'
-        self.map_name = 'map{}'.format(self.maps[self.map_idx])
-
-        self.map_csv = f"{self.map_dir}/centerline/{self.map_name}.csv"
-        self.map_csv_data = np.array(self.read_csv(self.map_csv))
-        self.map_width = self.map_csv_data[:, -1] * 2.0
+        self.map_name = 'map{}'.format(self.map_idx)
 
         self.map_yaml = f"{self.map_dir}/maps/{self.map_name}.yaml"
         self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
+        self.map_csv = f"{self.map_dir}/centerline/{self.map_name}.csv"
+        
+        self.map_data = read_csv(self.map_csv)
+        self.map_width = self.map_data["width"].iloc[0] * 2.0
 
         with open(self.map_yaml, 'r') as file:
             yaml_data = yaml.safe_load(file)
 
         self.map_origin = yaml_data['origin'][0:2]
         self.map_resolution = yaml_data['resolution']
-        self.map_max_s = self.map_csv_data[:, 0][-1]
+        self.map_max_s = self.map_data["s_m"].iloc[-1]
 
         self.add_obstacles()
-
-        self.map_yaml = f"{self.map_dir}/maps/{self.map_name}.yaml"
-        self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
-
+        
         self.update_map(self.map_yaml)
-
-    def read_csv(self, file_path):
-        data = np.genfromtxt(file_path, delimiter=';', skip_header=1)
-        return data
 
     def update_map(self, map_path):
         """
@@ -384,7 +380,6 @@ class F110Env(gym.Env):
                                   self.lap_times)
 
         done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
-        # print(self.collisions[self.ego_idx])
 
         max_episode_time = 100
         if (self.collisions[self.ego_idx]):
@@ -452,17 +447,16 @@ class F110Env(gym.Env):
         done, toggle_list = self._check_done()
 
         info = {'checkpoint_done': done,
-                'step_count': self.step_count,
                 'max_s': self.map_max_s,
                 'lap_count': obs['lap_counts'],
-                'lap_time': obs['lap_times']}
+                'lap_time': obs['lap_times'],
+                "is_success": obs['lap_counts'] >=1}
 
         # Reverse the lidar data
         obs['scans'] = obs['scans'][0][::-1]
         obs = self._format_obs(obs)
 
         self.curr_obs = obs
-        self.step_count = copy(self.step_count) + 1
         return obs, 0, done, info
 
     def reset(self, poses=None):
@@ -483,14 +477,13 @@ class F110Env(gym.Env):
             init_x = np.random.uniform(-0.3, 0.3)
             init_y = np.random.uniform(-0.3, 0.3)
             init_angle = (np.pi/2 +
-                          self.map_csv_data[1, 3] +
+                          self.map_data["psi_rad"].iloc[1] +
                           np.random.uniform(-np.pi/12, np.pi/12))
 
             poses = np.array([[init_x, init_y, init_angle]])
 
         # reset counters and data members
         self.current_time = 0.0
-        self.step_count = 0
         self.collisions = np.zeros((self.num_agents, ))
         self.num_toggles = 0
         self.near_start = True

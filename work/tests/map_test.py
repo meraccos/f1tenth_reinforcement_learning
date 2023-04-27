@@ -1,3 +1,5 @@
+# Not maintained
+
 import random
 
 import matplotlib.image as mpimg

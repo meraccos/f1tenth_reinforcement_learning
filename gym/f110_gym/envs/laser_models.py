@@ -416,7 +416,7 @@ class ScanSimulator2D(object):
             try:
                 map_metadata = yaml.safe_load(yaml_stream)
                 self.map_resolution = map_metadata['resolution']
-                self.origin = map_metadata['origin']
+                self.origin = map_metadata['origin']                
             except yaml.YAMLError as ex:
                 print(ex)
 

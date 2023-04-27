@@ -25,7 +25,7 @@ def create_env(maps, seed=5):
     env = ReducedObsWrapper(env)
     env = NormalizeActionWrapper(env)
 
-    env = Monitor(env)
+    env = Monitor(env, info_keywords=("is_success",))
     env = DummyVecEnv([lambda: env])
     env = VecNormalize(env, norm_reward=True, norm_obs=False)
 
@@ -38,9 +38,3 @@ def linear_schedule(initial_learning_rate: float):
         return initial_learning_rate * progress_remaining
 
     return schedule
-
-
-def read_csv(file_path):
-    data = np.genfromtxt(file_path, delimiter=";")
-    return data
-

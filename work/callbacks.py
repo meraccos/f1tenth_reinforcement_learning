@@ -44,8 +44,8 @@ class TensorboardCallback(BaseCallback):
         if self.num_timesteps % self.save_interval == 0:
             self.model.save(f"{self.save_path}_{int(self.num_timesteps / 1000)}k")
 
-        self.logger.record("rollout/success_rate", 
-                           float(self.success_rate))
+        # self.logger.record("rollout/success_rate", 
+        #                    float(self.success_rate))
         self.logger.record("rollout/collision_rate", 
                            float(self.collision_rate))
 
