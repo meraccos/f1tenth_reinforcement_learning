@@ -274,7 +274,6 @@ class F110Env(gym.Env):
         
         self.map_name = self.map_name + "_obs"
         self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
-        self.map_yaml = f"{self.map_dir}/maps/{self.map_name}.yaml"
         
         cv2.imwrite(output_image_path, image)
 

@@ -6,6 +6,8 @@ monitor.csv
 *.png
 *.pgm
 *.npz
+myenv/*
+activate/*
 
 build/
 gym/f110_gym.egg-info

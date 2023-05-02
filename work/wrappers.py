@@ -68,7 +68,8 @@ class NormalizeActionWrapper(gym.Wrapper):
                                            dtype=np.float64)
 
     def denormalize_action(self, norm_action):
-        act_steer = self.low[0] + (norm_action[0] + 1.0) * 0.5 * (self.high[0] - self.low[0])
+        act_steer = self.low[0] + (norm_action[0] + 
+                                   1.0) * 0.5 * (self.high[0] - self.low[0])
         act_vel = self.low[1] + norm_action[1] * (self.high[1] - self.low[1])
 
         act = np.array([act_steer, act_vel])
@@ -143,16 +144,18 @@ class ReducedObsWrapper(gym.ObservationWrapper):
         )
 
     def observation(self, obs):
-        # Scale the Observation
-        obs["linear_vels_x"] = obs["linear_vels_x"] / 3.2
-        obs["linear_vels_y"] = obs["linear_vels_y"] / 3.2
+        # Clip the lidar data to 10m, add noise
+        clipped_indices = np.where(obs["scans"] >= 10)
+        noise = np.random.uniform(-0.5, 0, clipped_indices[0].shape)
+        
+        obs["scans"] = np.clip(obs["scans"], None, 10)
+        obs["scans"][clipped_indices] += noise
+        obs["scans"] /= 10.0
+        
         obs["ang_vels_z"] /= 3.0
 
-        obs["scans"] = np.sqrt(obs["scans"] + 1.0) / 3.0 - 0.40
-
-        # Introduce velocity magnitude as observation
-        obs["linear_vel"] = (obs["linear_vels_x"]**2 +
-                             obs["linear_vels_y"]**2)**0.5
+        obs["linear_vel"] = np.sqrt(obs["linear_vels_x"]**2 + 
+                                    obs["linear_vels_y"]**2) / 3.2
 
         del obs["poses_x"]
         del obs["poses_y"]
@@ -165,8 +168,12 @@ class ReducedObsWrapper(gym.ObservationWrapper):
 
         del obs["poses_s"]
         del obs["poses_d"]
+        
         del obs["linear_vels_s"]
         del obs["linear_vels_d"]
+        
+        del obs["linear_vels_x"]
+        del obs["linear_vels_y"]
 
         return obs
     

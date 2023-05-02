@@ -151,7 +151,7 @@ def create_track():
         elif pass_through_start and i1 == -1:
             i1 = i
             break
-    print("Track generation: %i..%i -> %i-tiles track" % (i1, i2, i2 - i1))
+    print("Track generation: %i..%i -> %i-tiles track" % (i1, i2, i2 - i1), end=' ')
     assert i1 != -1
     assert i2 != -1
 
@@ -273,7 +273,7 @@ def convert_track(track, track_int, track_ext, iter, width):
     plt.savefig("maps/map" + str(iter) + ".png", dpi=80)
 
     map_width, map_height = fig.canvas.get_width_height()
-    print("map size: ", map_width, map_height)
+    # print("map size: ", map_width, map_height)
 
     # transform the track center line into pixel coordinates
     xy_pixels = ax.transData.transform(track)
@@ -311,13 +311,12 @@ def convert_track(track, track_int, track_ext, iter, width):
 
 if __name__ == "__main__":
     map_idx = 0
-    num_maps = 0
-    while num_maps <= NUM_MAPS:
+    for i in range(NUM_MAPS):
         try:
             track, track_int, track_ext, width = create_track()
-            map_idx += 1
             convert_track(track, track_int, track_ext, map_idx, width)
-            num_maps += 1
-        except:
-            print("Random generator failed, retrying")
+            print(f"# {map_idx}")
+            map_idx += 1
+        except Exception:
+            print(f"\nRandom generator failed: {Exception}, retrying")
             continue
