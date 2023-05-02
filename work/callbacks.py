@@ -1,7 +1,9 @@
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.callbacks import EventCallback
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, sync_envs_normalization
+from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import VecEnv
+from stable_baselines3.common.vec_env import sync_envs_normalization
 from typing import Any, Dict, Optional, Union
 from copy import copy
 
@@ -27,7 +29,7 @@ class TensorboardCallback(BaseCallback):
         self.collision_rate = 1.0
 
     def _on_step(self) -> bool:
-        super()._on_step()
+        # super()._on_step()
         infos = copy(self.locals.get("infos", [{}])[0])
 
         if infos['checkpoint_done']:
@@ -44,8 +46,8 @@ class TensorboardCallback(BaseCallback):
         if self.num_timesteps % self.save_interval == 0:
             self.model.save(f"{self.save_path}_{int(self.num_timesteps / 1000)}k")
 
-        # self.logger.record("rollout/success_rate", 
-        #                    float(self.success_rate))
+        self.logger.record("rollout/success_rate", 
+                           float(self.success_rate))
         self.logger.record("rollout/collision_rate", 
                            float(self.collision_rate))
 
@@ -75,7 +77,7 @@ class CustomEvalCallback(EventCallback):
     :param deterministic: Whether the evaluation should
         use a stochastic or deterministic actions.
     :param render: Whether to render or not the environment during evaluation
-    :param verbose: Verbosity level: 0 for no output, 1 for indicating information about evaluation results
+    :param verbose: Verbosity level: 0 for no output, 1 for eval results
     :param warn: Passed to ``evaluate_policy`` (warns if ``eval_env`` has not been
         wrapped with a Monitor wrapper)
     """
@@ -131,7 +133,8 @@ class CustomEvalCallback(EventCallback):
     def _init_callback(self) -> None:
         # Does not work in some corner cases, where the wrapper is not the same
         if not isinstance(self.training_env, type(self.eval_env)):
-            warnings.warn("Training and eval env are not of the same type" f"{self.training_env} != {self.eval_env}")
+            warnings.warn("Training and eval env are not of the same type" 
+                          f"{self.training_env} != {self.eval_env}")
 
         # Create folders if needed
         if self.best_model_save_path is not None:
@@ -143,7 +146,9 @@ class CustomEvalCallback(EventCallback):
         if self.callback_on_new_best is not None:
             self.callback_on_new_best.init_callback(self.model)
 
-    def _log_success_callback(self, locals_: Dict[str, Any], globals_: Dict[str, Any]) -> None:
+    def _log_success_callback(self, 
+                              locals_: Dict[str, Any], 
+                              globals_: Dict[str, Any]) -> None:
         """
         Callback passed to the  ``evaluate_policy`` function
         in order to log the success rate (when applicable),
@@ -153,7 +158,6 @@ class CustomEvalCallback(EventCallback):
         :param globals_:
         """
         info = locals_["info"]
-        # print(info)
 
         if locals_["done"]:
             maybe_is_success = info.get("is_success")
@@ -206,11 +210,13 @@ class CustomEvalCallback(EventCallback):
                 )
 
             mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
-            mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(episode_lengths)
+            mean_ep_length = np.mean(episode_lengths)
+            std_ep_length = np.std(episode_lengths)
             self.last_mean_reward = mean_reward
 
             if self.verbose >= 1:
-                print(f"Eval num_timesteps={self.num_timesteps}, " f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}")
+                print(f"Eval num_timesteps={self.num_timesteps}, " 
+                      f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}")
                 print(f"Episode length: {mean_ep_length:.2f} +/- {std_ep_length:.2f}")
             # Add to current Logger
             self.logger.record("eval/mean_reward", float(mean_reward))
@@ -225,14 +231,17 @@ class CustomEvalCallback(EventCallback):
             self.logger.record("eval/collision_rate", collision_rate)
 
             # Dump log so the evaluation results are printed with the correct timestep
-            self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
+            self.logger.record("time/total_timesteps", 
+                               self.num_timesteps, 
+                               exclude="tensorboard")
             self.logger.dump(self.num_timesteps)
 
             if mean_reward > self.best_mean_reward:
                 if self.verbose >= 1:
                     print("New best mean reward!")
                 if self.best_model_save_path is not None:
-                    self.model.save(os.path.join(self.best_model_save_path, "best_model"))
+                    self.model.save(os.path.join(self.best_model_save_path, 
+                                                 "best_model"))
                 self.best_mean_reward = mean_reward
                 # Trigger callback on new best model, if needed
                 if self.callback_on_new_best is not None:

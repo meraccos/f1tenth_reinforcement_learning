@@ -52,7 +52,7 @@ class RewardWrapper(gym.Wrapper):
         obs, _, done, info = copy(self.env.step(action))
         info['poses_s'] = obs['poses_s']
         info['collision'] = 1 - self.env.collisions[0]
-        info['is_success'] = info['lap_count'] >= 1
+        info['is_success'] = bool(info['lap_count'][0] >= 1)
         new_reward = copy(self.reward(obs))
         return obs, new_reward.item(), done, info
     

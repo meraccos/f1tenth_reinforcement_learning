@@ -16,8 +16,7 @@ if __name__ == "__main__":
 
     save_path = f"./models/{log_name}"
     log_dir = "./metrics/"
-    # maps = list(range(1, 450))
-    maps = [4]
+    maps = list(range(1, 450))
 
     random.seed(8)
 
@@ -30,7 +29,7 @@ if __name__ == "__main__":
     model = PPO(
         "MultiInputPolicy",
         env,
-        verbose=1,
+        verbose=2,
         # n_steps=1865,
         # ent_coef=0.032233448682464166,
         learning_rate=0.0001,

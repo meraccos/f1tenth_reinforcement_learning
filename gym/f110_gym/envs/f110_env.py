@@ -151,7 +151,11 @@ class F110Env(gym.Env):
         
         self.prev_was_one_lap = False
         
-        self.action_space = spaces.Box(np.array([self.params['s_min'], 0.01]), np.array([self.params['s_max'],self.params['sv_max']]), dtype=np.float64)
+        self.action_space = spaces.Box(np.array([self.params['s_min'], 
+                                                 0.01]), 
+                                       np.array([self.params['s_max'],
+                                                 self.params['sv_max']]), 
+                                       dtype=np.float64)
         
         self.observation_space = spaces.Dict({
             'ego_idx': spaces.Box(0, self.num_agents - 1, (1,), np.int32),
@@ -270,6 +274,7 @@ class F110Env(gym.Env):
         
         self.map_name = self.map_name + "_obs"
         self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
+        self.map_yaml = f"{self.map_dir}/maps/{self.map_name}.yaml"
         
         cv2.imwrite(output_image_path, image)
 
@@ -450,7 +455,7 @@ class F110Env(gym.Env):
                 'max_s': self.map_max_s,
                 'lap_count': obs['lap_counts'],
                 'lap_time': obs['lap_times'],
-                "is_success": obs['lap_counts'] >=1}
+                "is_success": obs['lap_counts'][0] >=1}
 
         # Reverse the lidar data
         obs['scans'] = obs['scans'][0][::-1]

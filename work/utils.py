@@ -25,7 +25,7 @@ def create_env(maps, seed=5):
     env = ReducedObsWrapper(env)
     env = NormalizeActionWrapper(env)
 
-    env = Monitor(env, info_keywords=("is_success",))
+    env = Monitor(env, info_keywords=("is_success",), filename='./metrics/data')
     env = DummyVecEnv([lambda: env])
     env = VecNormalize(env, norm_reward=True, norm_obs=False)
 

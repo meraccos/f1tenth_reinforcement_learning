@@ -19,3 +19,4 @@ docs/_build/
 *.mypy_cache/
 flycheck_*
 work/tracks/random_trackgen copy.py
+work/metrics/evaluations.npz
