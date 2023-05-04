@@ -384,26 +384,7 @@ class F110Env(gym.Env):
                                   self.current_time,
                                   self.lap_times)
 
-        done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
-
-        if (self.collisions[self.ego_idx]):
-            done = True
-            # print('collided')
-        elif np.all(self.toggle_list >= 4):
-            done = True
-            # print('toggle list?')
-        elif self.lap_counts == 3:
-            done = True
-            self.prev_was_one_lap = True
-            print('lap done')
-            # print('3 laps done')
-        else:
-            done = False
-        
-        if self.prev_was_one_lap:
-            print('got it, resetting!')
-            self.prev_was_one_lap = False
-            done = True
+        done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)        
             
         return bool(done), self.toggle_list >= 4
 
@@ -450,7 +431,6 @@ class F110Env(gym.Env):
         info = {'checkpoint_done': done,
                 'max_s': self.map_max_s,
                 'lap_count': obs['lap_counts'],
-                'lap_time': obs['lap_times'],
                 "is_success": obs['lap_counts'][0] >=1}
 
         # Reverse the lidar data

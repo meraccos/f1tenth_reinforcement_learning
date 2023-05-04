@@ -11,7 +11,7 @@ if __name__ == "__main__":
     save_interval = 50_000
     eva_freq = 50000
     n_eval_episodes = 5
-    log_name = "lidar_limit_punish10"
+    log_name = "gym_rewnorm_obsnorm"
 
     save_path = f"./models/{log_name}"
     log_dir = "./metrics/"
@@ -26,7 +26,8 @@ if __name__ == "__main__":
     eval_env = create_env(maps=maps, seed=8)
 
     model = PPO(
-        "MultiInputPolicy",
+        # "MultiInputPolicy",
+        "MlpPolicy",
         env,
         verbose=2,
         # n_steps=1865,
@@ -36,7 +37,7 @@ if __name__ == "__main__":
         batch_size=2048,
         # max_grad_norm=0.5,
         # gae_lambda=0.95,
-        gamma=0.995,
+        gamma=0.999,
         # n_epochs=10,
         clip_range=0.1,  # Adjust this value as needed
         tensorboard_log=log_dir,
