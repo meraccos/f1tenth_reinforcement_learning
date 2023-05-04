@@ -71,7 +71,7 @@ class RaceCar(object):
         seed,
         is_ego=False,
         time_step=0.01,
-        num_beams=600,
+        num_beams=2055,
         fov=4.7,
         integrator=Integrator.Euler,
     ):  # 1080

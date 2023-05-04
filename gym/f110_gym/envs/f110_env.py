@@ -274,6 +274,7 @@ class F110Env(gym.Env):
         
         self.map_name = self.map_name + "_obs"
         self.map_png = f"{self.map_dir}/maps/{self.map_name}.png"
+        self.map_yaml = f"{self.map_dir}/maps/{self.map_name}.yaml"
         
         cv2.imwrite(output_image_path, image)
 
@@ -385,16 +386,12 @@ class F110Env(gym.Env):
 
         done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 4)
 
-        max_episode_time = 100
         if (self.collisions[self.ego_idx]):
             done = True
             # print('collided')
         elif np.all(self.toggle_list >= 4):
             done = True
             # print('toggle list?')
-        elif self.current_time >= max_episode_time and self.lap_counts == 0:
-            done = True
-            # print('time exceed')
         elif self.lap_counts == 3:
             done = True
             self.prev_was_one_lap = True

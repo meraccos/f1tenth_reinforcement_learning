@@ -2,11 +2,12 @@ import gym
 import numpy as np
 
 from gym import spaces
+
 from copy import copy
 
 from sklearn.neighbors import KDTree
 
-NUM_BEAMS = 1080
+NUM_BEAMS = 2055
 DTYPE = np.float64
 
 
@@ -32,7 +33,7 @@ class RewardWrapper(gym.Wrapper):
 
         # Penalize the agent for collisions
         if self.env.collisions[0]:
-            reward -= 2000.0
+            reward -= 10.0
 
         # Minimize d (encourage the agent to stay near the center of the track)
         reward -= 0.05 * abs(d)
@@ -55,30 +56,6 @@ class RewardWrapper(gym.Wrapper):
         info['is_success'] = bool(info['lap_count'][0] >= 1)
         new_reward = copy(self.reward(obs))
         return obs, new_reward.item(), done, info
-    
-    
-# Steering -1 and +1, vel 0 and +1
-class NormalizeActionWrapper(gym.Wrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        self.low = env.action_space.low
-        self.high = env.action_space.high
-        self.action_space = gym.spaces.Box(np.array([-1.0, 0.0]), 
-                                           np.array([1.0, 1.0]), 
-                                           dtype=np.float64)
-
-    def denormalize_action(self, norm_action):
-        act_steer = self.low[0] + (norm_action[0] + 
-                                   1.0) * 0.5 * (self.high[0] - self.low[0])
-        act_vel = self.low[1] + norm_action[1] * (self.high[1] - self.low[1])
-
-        act = np.array([act_steer, act_vel])
-        return act
-
-    def step(self, action):
-        denormalized_action = self.denormalize_action(action)
-        next_state, reward, done, info = self.env.step(denormalized_action)
-        return next_state, reward, done, info
 
 
 class FrenetObsWrapper(gym.ObservationWrapper):
@@ -91,7 +68,7 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         self.observation_space = spaces.Dict(
             {
                 "ego_idx": spaces.Box(0, self.num_agents - 1, (1,), np.int32),
-                "scans": spaces.Box(0, 100, (NUM_BEAMS,), DTYPE),
+                "scans": spaces.Box(0, 1, (NUM_BEAMS,), DTYPE),
                 "poses_x": spaces.Box(-1000, 1000, (self.num_agents,), DTYPE),
                 "poses_y": spaces.Box(-1000, 1000, (self.num_agents,), DTYPE),
                 "poses_theta": spaces.Box(
@@ -107,6 +84,7 @@ class FrenetObsWrapper(gym.ObservationWrapper):
                 "poses_d": spaces.Box(-1000, 1000, (1,), DTYPE),
                 "linear_vels_s": spaces.Box(-10, 10, (1,), DTYPE),
                 "linear_vels_d": spaces.Box(-10, 10, (1,), DTYPE),
+                "linear_vel": spaces.Box(0, 1, (self.num_agents,), DTYPE),
             }
         )
 
@@ -127,55 +105,18 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         new_obs["poses_d"] = np.array(frenet_coords[1])
         new_obs["linear_vels_s"] = np.array(frenet_coords[2]).reshape((1, -1))
         new_obs["linear_vels_d"] = np.array(frenet_coords[3])
-
-        return new_obs
-
-
-class ReducedObsWrapper(gym.ObservationWrapper):
-    def __init__(self, env):
-        super(ReducedObsWrapper, self).__init__(env)
-
-        self.observation_space = spaces.Dict(
-            {
-                "scans": spaces.Box(0, 1.2, (NUM_BEAMS,), DTYPE),
-                "linear_vel": spaces.Box(0, 1, (self.num_agents,), DTYPE),
-                "ang_vels_z": spaces.Box(-1.2, 1.2, (self.num_agents,), DTYPE),
-            }
-        )
-
-    def observation(self, obs):
-        # Clip the lidar data to 10m, add noise
+        
+        # Scaling the scans and adding linear_vel
         clipped_indices = np.where(obs["scans"] >= 10)
         noise = np.random.uniform(-0.5, 0, clipped_indices[0].shape)
         
-        obs["scans"] = np.clip(obs["scans"], None, 10)
-        obs["scans"][clipped_indices] += noise
-        obs["scans"] /= 10.0
-        
-        obs["ang_vels_z"] /= 3.0
+        new_obs["scans"] = np.clip(new_obs["scans"], None, 10)
+        new_obs["scans"][clipped_indices] += noise
+        new_obs["scans"] /= 10.0
 
-        obs["linear_vel"] = np.sqrt(obs["linear_vels_x"]**2 + 
-                                    obs["linear_vels_y"]**2) / 3.2
+        new_obs["linear_vel"] = obs["linear_vels_x"] / 3.2
 
-        del obs["poses_x"]
-        del obs["poses_y"]
-
-        del obs["ego_idx"]
-        del obs["collisions"]
-        del obs["lap_times"]
-        del obs["lap_counts"]
-        del obs["poses_theta"]
-
-        del obs["poses_s"]
-        del obs["poses_d"]
-        
-        del obs["linear_vels_s"]
-        del obs["linear_vels_d"]
-        
-        del obs["linear_vels_x"]
-        del obs["linear_vels_y"]
-
-        return obs
+        return new_obs
     
     
 def get_closest_point_index(x, y, kdtree):

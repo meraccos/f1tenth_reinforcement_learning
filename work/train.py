@@ -1,18 +1,17 @@
-import random
-
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CallbackList
 from utils import create_env, linear_schedule
 from callbacks import TensorboardCallback, CustomEvalCallback
 
+import random
 
 # Define the custom learning rate schedule function
 
 if __name__ == "__main__":
-    save_interval = 100_000
+    save_interval = 50_000
     eva_freq = 50000
-    n_eval_episodes = 10
-    log_name = "two_cbs"
+    n_eval_episodes = 5
+    log_name = "lidar_limit_punish10"
 
     save_path = f"./models/{log_name}"
     log_dir = "./metrics/"
@@ -31,19 +30,17 @@ if __name__ == "__main__":
         env,
         verbose=2,
         # n_steps=1865,
-        # ent_coef=0.032233448682464166,
+        ent_coef=0.01,
         learning_rate=0.0001,
         # learning_rate=lr_schedule,
         batch_size=2048,
-        # vf_coef=0.5,
         # max_grad_norm=0.5,
         # gae_lambda=0.95,
-        gamma=0.99,
+        gamma=0.995,
         # n_epochs=10,
-        # clip_range=0.14766513397642733,  # Adjust this value as needed
+        clip_range=0.1,  # Adjust this value as needed
         tensorboard_log=log_dir,
-        device="cpu",
-        stats_window_size=2
+        device="cpu"
     )
     
     callbacks = CallbackList([TensorboardCallback(save_interval, save_path), 

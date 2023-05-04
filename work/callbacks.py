@@ -34,6 +34,7 @@ class TensorboardCallback(BaseCallback):
 
         if infos['checkpoint_done']:
 
+
             self.lap_count_log[self.episode_index] = infos["lap_count"]
             self.collision_log[self.episode_index] = infos['collision']
 
