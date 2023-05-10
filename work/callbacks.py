@@ -34,12 +34,12 @@ class TensorboardCallback(BaseCallback):
 
         if 'episode' in infos:
             self.lap_count_log[self.episode_index] = infos["lap_count"]
-            self.collision_log[self.episode_index] = infos['collision']
+            self.collision_log[self.episode_index] = 1 - infos['collision']
 
             self.episode_index = (self.episode_index + 1) % 100
 
             self.success_rate = np.mean(self.lap_count_log >= 1)
-            self.collision_rate = 1 - np.mean(self.collision_log)
+            self.collision_rate = np.mean(self.collision_log)
 
         # Save the model
         if self.num_timesteps % self.save_interval == 0:

@@ -1,8 +1,11 @@
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv
+
 from stable_baselines3.common.vec_env import VecNormalize
 
 from wrappers import RewardWrapper, FrenetObsWrapper
+from wrappers import ActionRandomizer, LidarRandomizer
 
 from gym.wrappers import FilterObservation, TimeLimit
 from gym.wrappers import RescaleAction
@@ -11,7 +14,7 @@ from gym.wrappers import FlattenObservation, FrameStack
 import numpy as np
 import gym
 
-NUM_BEAMS = 2055
+NUM_BEAMS = 2155
 DTYPE = np.float64
 
 def create_env(maps, seed=5):
@@ -31,9 +34,12 @@ def create_env(maps, seed=5):
     env = RescaleAction(env, min_action = np.array([-1.0, 0.0]), 
                              max_action = np.array([1.0, 1.0]))
     
-    env = FlattenObservation(env)
-    env = FrameStack(env, 3)
+    env = LidarRandomizer(env)
+    env = ActionRandomizer(env)
     
+    env = FlattenObservation(env)
+    # env = FrameStack(env, 3)
+            
     env = Monitor(env, info_keywords=("is_success",), filename='./metrics/data')
     env = DummyVecEnv([lambda: env])
     env = VecNormalize(env, norm_reward=True, norm_obs=False)

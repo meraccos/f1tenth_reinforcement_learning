@@ -6,8 +6,56 @@ import numpy as np
 
 from sklearn.neighbors import KDTree
 
-NUM_BEAMS = 2055
-DTYPE = np.float64
+NUM_BEAMS = 2155
+DTYPE = np.float32
+
+
+class LidarRandomizer(gym.ObservationWrapper):
+    def __init__(self, env, epsilon=0.05, zone_p=0.1, extreme_p=0.05):
+        super().__init__(env)
+        self.epsilon = epsilon
+        self.zone_p = zone_p
+        self.extreme_p = extreme_p
+
+    def observation(self, obs):
+        lidar_data = obs["scans"]
+        
+        # Try normal vs uniform noise
+        noise = np.random.uniform(-self.epsilon, self.epsilon, size=lidar_data.shape)
+        lidar_data += noise
+
+        # Randomly choose areas to increase/decrease.
+        if np.random.random() < self.zone_p:
+            # Define size of the area (20% of the readings).
+            size = int(len(lidar_data) * 0.2)
+            start = np.random.randint(0, len(lidar_data) - size)
+            end = start + size
+            # Randomly choose whether to increase or decrease, and by how much.
+            change = np.random.uniform(-0.1, 0.1)
+            lidar_data[start:end] += change
+
+        # Randomly set some readings to very high or very low.
+        if np.random.random() < self.extreme_p:
+            index = np.random.randint(len(lidar_data))
+            lidar_data[index] = np.random.choice([0, 1])
+
+        # Make sure the output is still between 0 and 1.
+        lidar_data = np.clip(lidar_data, 0, 1)
+        
+        
+        obs["scans"] = lidar_data
+
+        return obs
+    
+
+class ActionRandomizer(gym.ActionWrapper):
+    def __init__(self, env, epsilon=0.1):
+        super().__init__(env)
+        self.epsilon = epsilon
+    def action(self, action):
+        noise = np.random.uniform(-self.epsilon, self.epsilon, size=action.shape)
+        action = np.clip(action + noise, self.action_space.low, self.action_space.high)
+        return action
 
 
 class RewardWrapper(gym.Wrapper):
@@ -103,14 +151,14 @@ class FrenetObsWrapper(gym.ObservationWrapper):
         new_obs["linear_vels_d"] = np.array(frenet_coords[3])
         
         # Scale the scans and add linear_vel
-        clipped_indices = np.where(obs["scans"] >= 10)
+        clipped_indices = np.where(new_obs["scans"] >= 10)
         noise = np.random.uniform(-0.5, 0, clipped_indices[0].shape)
         
         new_obs["scans"] = np.clip(new_obs["scans"], None, 10)
         new_obs["scans"][clipped_indices] += noise
         new_obs["scans"] /= 10.0
 
-        new_obs["linear_vel"] = obs["linear_vels_x"] / 3.2
+        new_obs["linear_vel"] = new_obs["linear_vels_x"] / 3.2
 
         return new_obs
     

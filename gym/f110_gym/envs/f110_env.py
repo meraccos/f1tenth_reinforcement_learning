@@ -32,7 +32,6 @@ from stable_baselines3.common.logger import read_csv
 
 import gym
 from gym import spaces
-from copy import copy
 
 # Constants
 VIDEO_W = 600

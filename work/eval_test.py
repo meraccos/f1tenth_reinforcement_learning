@@ -10,9 +10,9 @@ maps = list(range(1, 450))
 env = create_env(maps=maps, seed=5)
 env.training = False
 
-model = "/Users/meraj/workspace/f1tenth_gym/work/models/lidar_limit_punish10_900k"
+model = "/Users/meraj/workspace/f1tenth_gym/work/models/exp_250k"
 
-model = PPO.load(path=model, env=env)
+model = PPO.load(path=model)
 
 obs = env.reset()
 done = False
