@@ -14,7 +14,6 @@ from gym.wrappers import FlattenObservation, FrameStack
 
 import numpy as np
 import gym
-from PIL import Image
 
 NUM_BEAMS = 2155
 DTYPE = np.float64
@@ -59,41 +58,3 @@ def linear_schedule(initial_learning_rate: float):
         return initial_learning_rate * progress_remaining
 
     return schedule
-
-def lidar_to_image(lidar_data, image_size=(512, 512)):
-    # Create an empty numpy array for the image
-    image = np.zeros(image_size, dtype=np.uint8)
-    
-    # Convert the LIDAR data to grayscale (0-255) with free area as black
-    lidar_data = 255 * (1 - lidar_data)
-    
-    # Get the middle point of the image
-    mid_x, mid_y = image_size[0] // 2, image_size[1] // 2
-    
-    # Get the angular step for each data point in the LIDAR array
-    angle_step = 270.0 / len(lidar_data)
-    
-    # Iterate over the LIDAR data array
-    for i, range_val in enumerate(lidar_data):
-        # Calculate the angle of this data point
-        angle = np.deg2rad(i * angle_step - 135)  # Start from -135 degree for a 270 degree FoV
-        
-        # Convert the range value to a pixel offset
-        # The maximum offset (for range value of 255) should be half of the image size
-        offset = int((range_val / 255.0) * (min(image_size) // 2))
-        
-        # Calculate the pixel coordinates
-        x = mid_x + int(offset * np.cos(angle))
-        y = mid_y + int(offset * np.sin(angle))
-        
-        # Make sure the coordinates are within the image boundaries
-        x = np.clip(x, 0, image_size[0] - 1)
-        y = np.clip(y, 0, image_size[1] - 1)
-        
-        # Set this pixel in the image array
-        image[y, x] = range_val
-    
-    # Convert the numpy array to a PIL image
-    image = Image.fromarray(image)
-    
-    return image

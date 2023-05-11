@@ -12,7 +12,7 @@ if __name__ == "__main__":
     eva_freq = 5e4
     n_eval_episodes = 20
     learn_steps = 1e7
-    log_name = "dr_01"
+    log_name = "dr_delayed"
 
     save_path = f"./models/{log_name}"
     log_dir = "./metrics/"
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         "MlpPolicy",
         env,
         verbose=2,
-        n_steps=1024,
+        n_steps=512,
         ent_coef=0.01,
         # learning_rate=0.0001,
         learning_rate=lr_schedule,

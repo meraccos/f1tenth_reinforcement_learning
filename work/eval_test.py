@@ -1,7 +1,9 @@
 from stable_baselines3 import PPO
-from utils import create_env
+from utils import create_env, lidar_to_image
 import torch
 import random
+import numpy as np
+import matplotlib.pyplot as plt
 
 maps = list(range(1, 450))
 
@@ -10,7 +12,7 @@ maps = list(range(1, 450))
 env = create_env(maps=maps, seed=5)
 env.training = False
 
-model = "/Users/meraj/workspace/f1tenth_gym/work/models/exp_250k"
+model = "/Users/meraj/workspace/f1tenth_gym/work/models/dr_delayed_100k"
 
 model = PPO.load(path=model)
 
@@ -26,4 +28,17 @@ done = False
 while not done:
     action, _state = model.predict(obs, deterministic=True)
     obs, reward, done, info = env.step(action)
-    env.render(mode="human_fast")
+    
+    
+    img = lidar_to_image(obs[0][:-1])
+    
+    # Convert the image to a numpy array for visualization
+    image_array = np.array(img)
+
+    # Plot the image
+    plt.imshow(image_array, cmap='gray')
+    plt.show()
+    # env.render(mode="human_fast")
+
+
+

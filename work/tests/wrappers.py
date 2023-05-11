@@ -50,7 +50,7 @@ class DelayedAction(gym.Wrapper):
 
 
 class LidarRandomizer(gym.ObservationWrapper):
-    def __init__(self, env, epsilon=0.05, zone_p=0.1, extreme_p=0.05):
+    def __init__(self, env, epsilon=0.01, zone_p=0.1, extreme_p=0.05):
         super().__init__(env)
         self.epsilon = epsilon
         self.zone_p = zone_p
@@ -76,7 +76,7 @@ class LidarRandomizer(gym.ObservationWrapper):
         # Randomly set some readings to very high or very low.
         if np.random.random() < self.extreme_p:
             index = np.random.randint(len(lidar_data))
-            lidar_data[index] = np.random.choice([0, 1])
+            lidar_data[index] = np.random.choice([0.3, 1])
 
         # Make sure the output is still between 0 and 1.
         lidar_data = np.clip(lidar_data, 0, 1)
