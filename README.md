@@ -1,13 +1,24 @@
-![Python 3.8 3.9](https://github.com/f1tenth/f1tenth_gym/actions/workflows/ci.yml/badge.svg)
-![Docker](https://github.com/f1tenth/f1tenth_gym/actions/workflows/docker.yml/badge.svg)
-# The F1TENTH Gym environment
+# Learning to drive with Reinforcement Learning  
+  
+This repository is originally forked from [here](https://github.com/f1tenth/f1tenth_gym). Check for original documentation.  
+As the original repo is mainly designed for SLAM purposes, there are significant changes to the environment structure.  
+  
+The RL content can be found under the folder [work](https://github.com/meraccos/f1tenth_reinforcement_learning/tree/main/work).  
+  
+I will try to add more documentation, but the file names are quite self-explanatory.  
+  
+You can start the training by running `train.py`. There are several ways to debug your code, including:
 
-This is the repository of the F1TENTH Gym environment.
+* Running `eval.py` will run several episodes and print out the average episodic reward.
+* Running `eval_test.py` will run a trained episode with rendering on.
+* Running `keyboard_control.py` will let you drive the car with keyboard.
+* Running `map_test.py` will you check whether your centerpoint data matches the map jpg.
+* Running `lidar_test.py` and `keyboard_lidar_test` will let you inspect the lidar data.
 
-This project is still under heavy developement.
-
-You can find the [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) of the environment here.
-
+Feel free to contact me for more details!  
+  
+You can find the [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) of the environment here.  
+  
 ## Quickstart
 We recommend installing the simulation inside a virtualenv. You can install the environment by running:
 
