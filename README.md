@@ -1,4 +1,6 @@
-# Learning to drive with Reinforcement Learning  
+# Learning to race with Reinforcement Learning  
+
+![](https://github.com/meraccos/f1tenth_reinforcement_learning/blob/main/racing.gif)
   
 This repository is originally forked from [here](https://github.com/f1tenth/f1tenth_gym). Check for original documentation.  
 As the original repo is mainly designed for SLAM purposes, there are significant changes to the environment structure.  
