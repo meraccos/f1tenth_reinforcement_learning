@@ -2,14 +2,12 @@
 
 ![](https://github.com/meraccos/f1tenth_reinforcement_learning/blob/main/racing.gif)
 
-(watch the full video [here](https://youtu.be/10Nks2jMxBk))   
+(watch the full video [here](https://youtu.be/10Nks2jMxBk), find the technical report [here](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=0-BhYXMAAAAJ&citation_for_view=0-BhYXMAAAAJ:u5HHmVD_uO8C))
   
 This repository is originally forked from [here](https://github.com/f1tenth/f1tenth_gym). Check for original documentation.  
 As the original repo is mainly designed for SLAM purposes, there are significant changes to the environment structure.  
   
 The RL content can be found under the folder [work](https://github.com/meraccos/f1tenth_reinforcement_learning/tree/main/work).  
-  
-I will try to add more documentation, but the file names are quite self-explanatory.  
   
 You can start the training by running `train.py`. There are several ways to debug your code, including:
 
@@ -19,7 +17,7 @@ You can start the training by running `train.py`. There are several ways to debu
 * Running `map_test.py` will you check whether your centerpoint data matches the map jpg.
 * Running `lidar_test.py` and `keyboard_lidar_test` will let you inspect the lidar data.
 
-Feel free to contact me for more details!  
+I will try to add more documentation, but most of the files are quite self-explanatory. Feel free to contact me for more details!  
   
 You can find the [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) of the environment here.  
   
